@@ -1,34 +1,16 @@
 {
-  "name": "punto-de-venta---inventario",
+  "name": "punto-de-venta-inventario-monorepo",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "test": "vitest run",
-    "lint": "oxlint",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.114.0",
-    "canvas-confetti": "^1.9.4",
-    "html5-qrcode": "^2.3.8",
-    "lucide-react": "^1.39.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
-  },
-  "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "@testing-library/jest-dom": "^7.0.1",
-    "@testing-library/react": "^16.3.3",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "@vitejs/plugin-react": "^6.1.0",
-    "jsdom": "^30.0.1",
-    "oxlint": "^1.79.0",
-    "tailwindcss": "^4.3.3",
-    "vite": "^8.2.2",
-    "vitest": "^4.1.11"
+    "dev": "npm run dev --workspace=@pharmastock/pos-web",
+    "dev:backend": "npm run start:dev --workspace=@pharmastock/sri-backend",
+    "build": "npm run build --workspaces --if-present",
+    "build:pos": "npm run build --workspace=@pharmastock/pos-web",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
   }
 }

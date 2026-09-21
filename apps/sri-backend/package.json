@@ -1,0 +1,46 @@
+{
+  "name": "@pharmastock/sri-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "oxlint"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/core": "^11.0.1",
+    "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/throttler": "^6.4.0",
+    "@pharmastock/shared": "*",
+    "@supabase/supabase-js": "^2.114.0",
+    "axios": "^1.8.2",
+    "dotenv": "^16.4.7",
+    "ec-sri-invoice-signer": "^1.8.2",
+    "nodemailer": "^6.10.0",
+    "pdfmake": "^0.2.18",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "xmlbuilder2": "^4.0.3",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.1",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.9",
+    "@types/nodemailer": "^6.4.17",
+    "@types/pdfmake": "^0.2.11",
+    "source-map-support": "^0.5.21",
+    "ts-loader": "^9.5.2",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.8.2",
+    "vitest": "^4.1.11"
+  }
+}

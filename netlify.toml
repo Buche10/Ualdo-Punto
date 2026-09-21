@@ -1,6 +1,6 @@
 [build]
-  command = "npm run build"
-  publish = "dist"
+  command = "npm run build:pos"
+  publish = "apps/pos-web/dist"
 
 [[redirects]]
   from = "/*"
