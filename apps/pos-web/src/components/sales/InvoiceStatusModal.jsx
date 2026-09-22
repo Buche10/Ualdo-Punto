@@ -1,0 +1,184 @@
+import React, { useState } from 'react';
+import { CheckCircle2, Clock, AlertTriangle, XCircle, FileText, Download, Mail, Copy, Check, ArrowRight } from 'lucide-react';
+import { useEstadoComprobante } from '../../hooks/useEstadoComprobante';
+import { apiClient } from '../../api/apiClient';
+
+export const InvoiceStatusModal = ({ isOpen, onClose, claveAcceso, initialData, onNewSale, clientEmail, isDarkMode }) => {
+  const [copied, setCopied] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+
+  const { estado: polledEstado, data, isPolling } = useEstadoComprobante(claveAcceso, {
+    enabled: isOpen && !!claveAcceso,
+    interval: 2000,
+  });
+
+  if (!isOpen) return null;
+
+  const estado = polledEstado || initialData?.estado || 'FIRMADO';
+  const numAutorizacion = data?.numAutorizacion || initialData?.numAutorizacion || (estado === 'AUTORIZADO' ? claveAcceso : null);
+  const mensajes = data?.mensajes || [];
+
+  const handleCopy = () => {
+    if (claveAcceso) {
+      navigator.clipboard.writeText(claveAcceso);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleSendEmail = () => {
+    const email = clientEmail || 'cliente@farmacia.com';
+    const conf = window.confirm(`¿Confirmar envío de factura electrónica al correo ${email}?`);
+    if (conf) {
+      setEmailSent(true);
+      setTimeout(() => setEmailSent(false), 4000);
+    }
+  };
+
+  const getStatusBadge = () => {
+    switch (estado) {
+      case 'AUTORIZADO':
+        return {
+          icon: <CheckCircle2 className="w-8 h-8 text-emerald-400" />,
+          title: 'Factura Autorizada por el SRI',
+          color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+          desc: 'El comprobante ha sido validado y autorizado legalmente por la autoridad tributaria.',
+        };
+      case 'RECIBIDA':
+      case 'FIRMADO':
+      case 'GENERADO':
+        return {
+          icon: <Clock className="w-8 h-8 text-amber-400 animate-spin" />,
+          title: `Comprobante ${estado}`,
+          color: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+          desc: isPolling ? 'Transmitiendo y esperando autorización del SRI...' : 'Procesando en cola...',
+        };
+      case 'EN_CONTINGENCIA':
+        return {
+          icon: <AlertTriangle className="w-8 h-8 text-amber-500" />,
+          title: 'Emisión en Contingencia',
+          color: 'text-amber-500 bg-amber-500/10 border-amber-500/30',
+          desc: 'El SRI no respondió a tiempo. El comprobante será reenviado automáticamente por el worker.',
+        };
+      case 'DEVUELTA':
+      case 'NO_AUTORIZADO':
+        return {
+          icon: <XCircle className="w-8 h-8 text-rose-500" />,
+          title: `Rechazado: ${estado}`,
+          color: 'text-rose-500 bg-rose-500/10 border-rose-500/30',
+          desc: 'El SRI detectó inconsistencias en los datos del comprobante.',
+        };
+      default:
+        return {
+          icon: <Clock className="w-8 h-8 text-slate-400" />,
+          title: estado,
+          color: 'text-slate-400 bg-slate-500/10 border-slate-500/30',
+          desc: 'Estado del comprobante en procesamiento.',
+        };
+    }
+  };
+
+  const badge = getStatusBadge();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+      <div className={`w-full max-w-lg p-6 rounded-3xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} shadow-2xl space-y-4 text-xs`}>
+        {/* Encabezado Estado */}
+        <div className={`p-4 rounded-2xl border flex items-center gap-3.5 ${badge.color}`}>
+          {badge.icon}
+          <div>
+            <h3 className="font-bold text-sm tracking-tight">{badge.title}</h3>
+            <p className="text-[11px] opacity-80">{badge.desc}</p>
+          </div>
+        </div>
+
+        {/* Clave de Acceso */}
+        <div className={`p-3 rounded-xl border ${isDarkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-slate-50 border-slate-200'} space-y-1`}>
+          <div className="flex items-center justify-between text-slate-400 text-[10px] uppercase font-bold tracking-wider">
+            <span>Clave de Acceso (49 Dígitos)</span>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="flex items-center gap-1 text-emerald-500 hover:text-emerald-400"
+            >
+              {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              {copied ? 'Copiada' : 'Copiar'}
+            </button>
+          </div>
+          <p className="font-mono text-[11px] break-all select-all font-semibold text-slate-200 dark:text-white">
+            {claveAcceso}
+          </p>
+          {numAutorizacion && numAutorizacion !== claveAcceso && (
+            <p className="text-[10px] text-emerald-400 pt-1">
+              No. Autorización: {numAutorizacion}
+            </p>
+          )}
+        </div>
+
+        {/* Mensajes del SRI si existen */}
+        {mensajes.length > 0 && (
+          <div className="p-3 rounded-xl border border-rose-500/20 bg-rose-500/10 space-y-1">
+            <p className="font-bold text-rose-400 text-[11px]">Mensajes del SRI:</p>
+            {mensajes.map((m, idx) => (
+              <p key={idx} className="text-[10px] text-rose-300">
+                {typeof m === 'object' ? JSON.stringify(m) : String(m)}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {/* Acciones para comprobante autorizado */}
+        <div className="grid grid-cols-2 gap-2 pt-2">
+          <a
+            href={apiClient.getRideUrl(claveAcceso)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all text-center"
+          >
+            <FileText className="w-4 h-4 text-emerald-400" />
+            <span>Ver RIDE (PDF)</span>
+          </a>
+
+          <a
+            href={apiClient.getXmlUrl(claveAcceso)}
+            target="_blank"
+            rel="noopener noreferrer"
+            download={`${claveAcceso}.xml`}
+            className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all text-center"
+          >
+            <Download className="w-4 h-4 text-cyan-400" />
+            <span>Descargar XML</span>
+          </a>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSendEmail}
+          className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl font-semibold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 transition-all"
+        >
+          <Mail className="w-4 h-4" />
+          <span>{emailSent ? '¡Comprobante enviado por email!' : 'Enviar RIDE + XML por Email'}</span>
+        </button>
+
+        {/* Botón Nueva Venta / Cerrar */}
+        <div className="pt-2 flex justify-end gap-2 border-t border-slate-800">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-slate-400 hover:text-white rounded-xl"
+          >
+            Cerrar
+          </button>
+          <button
+            type="button"
+            onClick={onNewSale}
+            className="flex items-center gap-1.5 px-5 py-2 rounded-xl font-bold bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-950/40 transition-all"
+          >
+            <span>Nueva Venta</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

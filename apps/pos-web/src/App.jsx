@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Package, FileSpreadsheet, Calendar, Pill, RotateCcw, Smartphone, Sun, Moon, Download, Upload, Trash2 } from 'lucide-react';
+import { Camera, Package, FileSpreadsheet, Calendar, Pill, RotateCcw, Smartphone, Sun, Moon, Download, Upload, Trash2, ReceiptText } from 'lucide-react';
 import { QuickCount } from './components/QuickCount';
 import { StockDashboard } from './components/StockDashboard';
 import { AuditReport } from './components/AuditReport';
 import { BatchManagement } from './components/BatchManagement';
+import { SalesScreen } from './components/sales/SalesScreen';
 import {
   loadProducts, saveProducts,
   loadBatches, saveBatches,
@@ -279,6 +280,22 @@ export function App() {
     }
   };
 
+  const handleSaleCompleted = (soldItems) => {
+    setProducts((prev) => {
+      const updated = prev.map((p) => {
+        const sold = soldItems?.find((s) => s.productoId === p.id);
+        if (sold) {
+          const newStock = Math.max(0, (p.theoreticalStock ?? 0) - sold.cantidad);
+          return { ...p, theoreticalStock: newStock };
+        }
+        return p;
+      });
+      saveProducts(updated);
+      pushToCloud(() => upsertProductsCloud(updated));
+      return updated;
+    });
+  };
+
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} font-sans flex flex-col transition-colors duration-200`}>
       
@@ -382,6 +399,18 @@ export function App() {
             </div>
 
             <button
+              onClick={() => setActiveTab('sales')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
+                activeTab === 'sales'
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/40'
+                  : isDarkMode ? 'text-slate-400 hover:bg-slate-800/60 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <ReceiptText className="w-5 h-5 text-emerald-400" />
+              <span>Facturar (POS SRI)</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('quick-count')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
                 activeTab === 'quick-count'
@@ -481,6 +510,14 @@ export function App() {
               isDarkMode={isDarkMode}
             />
           )}
+
+          {activeTab === 'sales' && (
+            <SalesScreen
+              products={products}
+              onSaleCompleted={handleSaleCompleted}
+              isDarkMode={isDarkMode}
+            />
+          )}
         </main>
 
       </div>
@@ -489,6 +526,16 @@ export function App() {
       <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 ${
         isDarkMode ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200 shadow-xl'
       } backdrop-blur-lg border-t px-2 py-2 flex items-center justify-around`}>
+        <button
+          onClick={() => setActiveTab('sales')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs font-semibold transition-colors ${
+            activeTab === 'sales' ? 'text-emerald-500' : isDarkMode ? 'text-slate-400' : 'text-slate-500'
+          }`}
+        >
+          <ReceiptText className="w-5 h-5" />
+          <span>Facturar</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('quick-count')}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs font-semibold transition-colors ${
