@@ -13,6 +13,7 @@ dist
 dist-ssr
 *.local
 coverage
+scripts/output/
 
 # Certificados y llaves criptográficas (CRÍTICO SRI)
 *.p12

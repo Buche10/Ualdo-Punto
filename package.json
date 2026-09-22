@@ -11,6 +11,7 @@
     "build": "npm run build --workspaces --if-present",
     "build:pos": "npm run build --workspace=@pharmastock/pos-web",
     "test": "npm run test --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "lint": "npm run lint --workspaces --if-present",
+    "certificacion": "tsx scripts/certificacion.ts"
   }
 }
