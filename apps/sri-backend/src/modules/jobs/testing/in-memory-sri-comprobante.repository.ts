@@ -29,6 +29,7 @@ export class InMemorySriComprobanteRepository implements ISriComprobanteReposito
       estado: input.estado,
       xml_generado: input.xmlGenerado,
       xml_firmado: input.xmlFirmado,
+      venta_id: input.ventaId,
     };
     this.comprobantes.set(input.claveAcceso, record);
     return { id };

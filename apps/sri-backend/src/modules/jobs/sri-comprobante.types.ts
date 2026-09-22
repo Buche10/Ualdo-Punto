@@ -9,6 +9,7 @@ export interface GuardarComprobanteInput {
   xmlGenerado: string;
   xmlFirmado: string;
   ambiente?: SriEnvironment;
+  ventaId?: string;
 }
 
 export interface ComprobanteDbRecord {
@@ -20,6 +21,7 @@ export interface ComprobanteDbRecord {
   estado: SriComprobanteEstado;
   xml_generado: string;
   xml_firmado: string;
+  venta_id?: string;
   num_autorizacion?: string;
   fecha_autorizacion?: string;
   mensajes_sri?: unknown[];

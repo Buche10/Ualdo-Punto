@@ -43,6 +43,7 @@ export class SriComprobanteRepository implements ISriComprobanteRepository {
         estado: input.estado,
         xml_generado: input.xmlGenerado,
         xml_firmado: input.xmlFirmado,
+        venta_id: input.ventaId || null,
       })
       .select('id')
       .single();

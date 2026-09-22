@@ -42,6 +42,7 @@ export interface EmitirFacturaDto {
   }>;
   formaPagoCodigo: string; // '01', '20'
   certPassword?: string;
+  ventaId?: string;
 }
 
 @Injectable()
@@ -89,10 +90,8 @@ export class InvoicesService {
       tipoEmision: '1',
     });
 
-    const d = fechaActual.getDate().toString().padStart(2, '0');
-    const m = (fechaActual.getMonth() + 1).toString().padStart(2, '0');
-    const y = fechaActual.getFullYear().toString();
-    const fechaEmisionStr = `${d}/${m}/${y}`;
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const fechaEmisionStr = `${pad(fechaActual.getDate())}/${pad(fechaActual.getMonth() + 1)}/${fechaActual.getFullYear()}`;
 
     // 5. Construir XML Factura v2.1.0 respetando orden XSD (H1 y H2)
     const xmlData: FacturaXmlData = {
@@ -165,14 +164,11 @@ export class InvoicesService {
         xmlGenerado,
         xmlFirmado,
         ambiente,
+        ventaId: dto.ventaId,
       });
     } catch (err: any) {
-      if (
-        err?.code === '23505' ||
-        err?.dbError?.code === '23505' ||
-        String(err?.message).includes('unique constraint') ||
-        String(err?.message).includes('duplicate key')
-      ) {
+      const isDuplicate = err?.code === '23505' || err?.dbError?.code === '23505' || /unique|duplicate/i.test(String(err?.message));
+      if (isDuplicate) {
         throw new ConflictException(`El comprobante con clave de acceso ${claveAcceso} ya fue registrado previamente.`);
       }
       throw err;
@@ -213,10 +209,22 @@ export class InvoicesService {
 
   public async obtenerXml(claveAcceso: string): Promise<string> {
     const registro = await this.sriRepository.obtenerComprobantePorClave(claveAcceso);
-    if (!registro) {
-      throw new NotFoundException(`Comprobante con clave ${claveAcceso} no encontrado`);
-    }
+    if (!registro) throw new NotFoundException(`Comprobante con clave ${claveAcceso} no encontrado`);
     return registro.xml_firmado || registro.xml_generado;
+  }
+
+  public async obtenerEstado(claveAcceso: string) {
+    const c = await this.sriRepository.obtenerComprobantePorClave(claveAcceso);
+    if (!c) throw new NotFoundException(`Comprobante ${claveAcceso} no encontrado`);
+    return {
+      id: c.id,
+      claveAcceso: c.clave_acceso,
+      estado: c.estado,
+      numAutorizacion: c.num_autorizacion,
+      fechaAutorizacion: c.fecha_autorizacion,
+      mensajes: c.mensajes_sri || [],
+      ventaId: c.venta_id,
+    };
   }
 }
 

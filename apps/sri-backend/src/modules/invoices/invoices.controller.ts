@@ -1,13 +1,15 @@
-import { Controller, Post, Get, Body, Param, Res, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Res, HttpStatus, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { InvoicesService, EmitirFacturaDto } from './invoices.service';
 import { calculateInvoiceTotals, createSuccessResponse, CartItem } from '@pharmastock/shared';
+import { ApiKeyGuard } from '../../common/guards/api-key.guard';
 
 @Controller('invoices')
 export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
 
   @Post('emitir')
+  @UseGuards(ApiKeyGuard)
   public async emitirFactura(@Body() dto: EmitirFacturaDto) {
     const factura = await this.invoicesService.emitirFactura(dto);
     return createSuccessResponse(factura);
@@ -17,6 +19,12 @@ export class InvoicesController {
   public calcularTotales(@Body() body: { items: CartItem[] }) {
     const totales = calculateInvoiceTotals(body.items || []);
     return createSuccessResponse(totales);
+  }
+
+  @Get(':claveAcceso/estado')
+  public async consultarEstado(@Param('claveAcceso') claveAcceso: string) {
+    const estado = await this.invoicesService.obtenerEstado(claveAcceso);
+    return createSuccessResponse(estado);
   }
 
   @Get(':claveAcceso/ride')
