@@ -57,6 +57,10 @@ export class SriComprobanteRepository implements ISriComprobanteRepository {
       throw err;
     }
 
+    if (input.ventaId) {
+      await client.from('ventas').update({ estado: 'FACTURADA' }).eq('id', input.ventaId);
+    }
+
     return { id: data.id };
   }
 

@@ -13,5 +13,9 @@
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "certificacion": "tsx scripts/certificacion.ts"
+  },
+  "devDependencies": {
+    "libxml2-wasm": "^0.7.2",
+    "tsx": "^4.23.15"
   }
 }

@@ -129,26 +129,23 @@ export const InvoiceStatusModal = ({ isOpen, onClose, claveAcceso, initialData, 
 
         {/* Acciones para comprobante autorizado */}
         <div className="grid grid-cols-2 gap-2 pt-2">
-          <a
-            href={apiClient.getRideUrl(claveAcceso)}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            onClick={() => apiClient.descargarRide(claveAcceso).catch((err) => alert(err.message))}
             className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all text-center"
           >
             <FileText className="w-4 h-4 text-emerald-400" />
-            <span>Ver RIDE (PDF)</span>
-          </a>
+            <span>Ver / Descargar RIDE</span>
+          </button>
 
-          <a
-            href={apiClient.getXmlUrl(claveAcceso)}
-            target="_blank"
-            rel="noopener noreferrer"
-            download={`${claveAcceso}.xml`}
+          <button
+            type="button"
+            onClick={() => apiClient.descargarXml(claveAcceso).catch((err) => alert(err.message))}
             className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all text-center"
           >
             <Download className="w-4 h-4 text-cyan-400" />
             <span>Descargar XML</span>
-          </a>
+          </button>
         </div>
 
         <button

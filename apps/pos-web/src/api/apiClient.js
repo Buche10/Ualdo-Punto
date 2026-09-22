@@ -72,15 +72,40 @@ export const apiClient = {
   obtenerEstadoFactura: (claveAcceso) =>
     request(`/invoices/${encodeURIComponent(claveAcceso)}/estado`),
 
-  getRideUrl: (claveAcceso) => {
+  descargarRide: async (claveAcceso) => {
     const baseUrl = getBaseUrl().replace(/\/$/, '');
     const apiKey = getApiKey();
-    return `${baseUrl}/invoices/${encodeURIComponent(claveAcceso)}/ride?apiKey=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(`${baseUrl}/invoices/${encodeURIComponent(claveAcceso)}/ride`, {
+      headers: { 'x-api-key': apiKey },
+    });
+    if (!res.ok) throw new ApiError('Error al descargar RIDE PDF', res.status);
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = `RIDE_${claveAcceso}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
   },
 
-  getXmlUrl: (claveAcceso) => {
+  descargarXml: async (claveAcceso) => {
     const baseUrl = getBaseUrl().replace(/\/$/, '');
     const apiKey = getApiKey();
-    return `${baseUrl}/invoices/${encodeURIComponent(claveAcceso)}/xml?apiKey=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(`${baseUrl}/invoices/${encodeURIComponent(claveAcceso)}/xml`, {
+      headers: { 'x-api-key': apiKey },
+    });
+    if (!res.ok) throw new ApiError('Error al descargar XML firmado', res.status);
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = `${claveAcceso}.xml`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
   },
 };
+

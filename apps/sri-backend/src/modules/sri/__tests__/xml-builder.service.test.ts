@@ -124,7 +124,7 @@ describe('XmlBuilderService (Generación XML Factura v2.1.0 SRI)', () => {
     const posRuc = xml.indexOf('<ruc>');
     const posClaveAcceso = xml.indexOf('<claveAcceso>');
     const posDirMatriz = xml.indexOf('<dirMatriz>');
-    const posRimpe = xml.indexOf('<contribuyenteRimpe>');
+    const posRimpe = xml.indexOf('<regimenRimpe>');
 
     expect(posRazonSocial).toBeGreaterThan(-1);
     expect(posNombreComercial).toBeGreaterThan(posRazonSocial);

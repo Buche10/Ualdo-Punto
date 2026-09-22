@@ -87,7 +87,7 @@ export class XmlBuilderService {
       secuencial: data.secuencial,
       dirMatriz: data.dirMatriz,
       ...(data.regimenMicroempresas ? { regimenMicroempresas: data.regimenMicroempresas } : {}),
-      ...(data.regimenRimpe ? { contribuyenteRimpe: data.regimenRimpe } : {}),
+      ...(data.regimenRimpe ? { regimenRimpe: data.regimenRimpe } : {}),
     };
 
     return info;

@@ -4,6 +4,16 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const logger = new Logger('SRI-Backend');
+
+  if (!process.env.POS_API_KEY) {
+    if (process.env.NODE_ENV === 'production' || process.env.SRI_AMBIENTE === '2') {
+      logger.error('CRÍTICO: POS_API_KEY no definida en entorno de producción. Abortando inicio.');
+      process.exit(1);
+    } else {
+      logger.warn('ADVERTENCIA: POS_API_KEY no definida. Configure la variable en su archivo .env');
+    }
+  }
+
   const app = await NestFactory.create(AppModule);
 
   const allowedOrigins = [
@@ -15,17 +25,13 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Permitir requests sin origin (como herramientas de prueba locales, scripts, o server-to-server)
+      // Permitir requests sin origin (scripts locales o llamadas server-to-server)
       if (!origin) return callback(null, true);
 
-      const isAllowed =
-        allowedOrigins.includes(origin) ||
-        /\.netlify\.app$/.test(origin);
-
-      if (isAllowed) {
+      if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        logger.warn(`CORS bloqueado para origen: ${origin}`);
+        logger.warn(`CORS bloqueado para origen no autorizado: ${origin}`);
         callback(new Error('Origen no permitido por política CORS'));
       }
     },
