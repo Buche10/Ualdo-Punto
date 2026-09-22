@@ -105,83 +105,101 @@ export class SriSoapClientService {
     }
   }
 
+  private createParser(): XMLParser {
+    return new XMLParser({
+      ignoreAttributes: false,
+      removeNSPrefix: true,
+      trimValues: true,
+      parseTagValue: false, // Preservar strings (ej. 49 dígitos numAutorizacion y claveAcceso)
+    });
+  }
+
   /**
-   * Parsea la respuesta XML de Recepción
+   * Parsea la respuesta XML de Recepción usando XMLParser estructurado
    */
   private parseRecepcionResponse(rawXml: string): RecepcionResponse {
-    const estadoMatch = rawXml.match(/<estado>(RECIBIDA|DEVUELTA)<\/estado>/i);
-    const estado = (estadoMatch ? estadoMatch[1].toUpperCase() : 'ERROR') as 'RECIBIDA' | 'DEVUELTA' | 'ERROR';
+    try {
+      const parser = this.createParser();
+      const parsed = parser.parse(rawXml);
+      const resp = parsed?.Envelope?.Body?.validarComprobanteResponse?.RespuestaRecepcionComprobante;
+      const estado = (resp?.estado ? String(resp.estado).toUpperCase() : 'ERROR') as 'RECIBIDA' | 'DEVUELTA' | 'ERROR';
+      const mensajes = this.extractMensajesFromObject(resp?.comprobantes || parsed);
 
-    const mensajes = this.extractMensajes(rawXml);
-    return { estado, mensajes, rawResponse: rawXml };
+      return { estado, mensajes, rawResponse: rawXml };
+    } catch (err) {
+      this.logger.error(`Error parseando XML de recepción: ${(err as Error).message}`);
+      return { estado: 'ERROR', mensajes: [], rawResponse: rawXml };
+    }
   }
 
   /**
-   * Parsea la respuesta XML de Autorización
+   * Parsea la respuesta XML de Autorización usando XMLParser estructurado
    */
   private parseAutorizacionResponse(rawXml: string): AutorizacionResponse {
-    const estadoMatch = rawXml.match(/<estado>(AUTORIZADO|NO AUTORIZADO|EN PROCESO)<\/estado>/i);
-    const estado = (estadoMatch ? estadoMatch[1].toUpperCase() : 'ERROR') as 'AUTORIZADO' | 'NO AUTORIZADO' | 'EN PROCESO' | 'ERROR';
+    try {
+      const parser = this.createParser();
+      const parsed = parser.parse(rawXml);
+      const resp = parsed?.Envelope?.Body?.autorizacionComprobanteResponse?.RespuestaAutorizacionComprobante;
+      const autRaw = resp?.autorizaciones?.autorizacion;
+      const aut = Array.isArray(autRaw) ? autRaw[0] : autRaw;
 
-    const numAutMatch = rawXml.match(/<numeroAutorizacion>(\d{49})<\/numeroAutorizacion>/i);
-    const fechaAutMatch = rawXml.match(/<fechaAutorizacion>(.*?)<\/fechaAutorizacion>/i);
-    const comprobanteMatch = rawXml.match(/<comprobante><!\[CDATA\[([\s\S]*?)\]\]><\/comprobante>/i);
+      if (!aut) {
+        return {
+          estado: 'ERROR',
+          mensajes: [{ identificador: 'PARSE_ERR', mensaje: 'Respuesta sin nodo autorizacion', tipo: 'ERROR' }],
+          rawResponse: rawXml,
+        };
+      }
 
-    const mensajes = this.extractMensajes(rawXml);
+      const estado = (aut.estado ? String(aut.estado).toUpperCase() : 'ERROR') as 'AUTORIZADO' | 'NO AUTORIZADO' | 'EN PROCESO' | 'ERROR';
+      const numeroAutorizacion = aut.numeroAutorizacion ? String(aut.numeroAutorizacion) : undefined;
+      const fechaAutorizacion = aut.fechaAutorizacion ? String(aut.fechaAutorizacion) : undefined;
+      const xmlComprobante = aut.comprobante ? String(aut.comprobante) : undefined;
+      const mensajes = this.extractMensajesFromObject(aut.mensajes || parsed);
 
-    return {
-      estado,
-      numeroAutorizacion: numAutMatch ? numAutMatch[1] : undefined,
-      fechaAutorizacion: fechaAutMatch ? fechaAutMatch[1] : undefined,
-      xmlComprobante: comprobanteMatch ? comprobanteMatch[1] : undefined,
-      mensajes,
-      rawResponse: rawXml,
-    };
+      return {
+        estado,
+        numeroAutorizacion,
+        fechaAutorizacion,
+        xmlComprobante,
+        mensajes,
+        rawResponse: rawXml,
+      };
+    } catch (err) {
+      this.logger.error(`Error parseando XML de autorización: ${(err as Error).message}`);
+      return { estado: 'ERROR', mensajes: [], rawResponse: rawXml };
+    }
   }
 
   /**
-   * Extrae los mensajes de error/advertencia del XML SOAP usando XMLParser
+   * Extrae los mensajes de error/advertencia del objeto parseado
    */
-  private extractMensajes(rawXml: string): SriMensaje[] {
+  private extractMensajesFromObject(root: unknown): SriMensaje[] {
     const mensajes: SriMensaje[] = [];
+    if (!root || typeof root !== 'object') return mensajes;
 
-    try {
-      const parser = new XMLParser({
-        ignoreAttributes: false,
-        removeNSPrefix: true,
-      });
-      const parsed = parser.parse(rawXml);
+    const traverse = (obj: any) => {
+      if (!obj || typeof obj !== 'object') return;
 
-      // Buscar mensajes recursivamente o en rutas típicas
-      const findMessages = (obj: any) => {
-        if (!obj || typeof obj !== 'object') return;
+      // Estructura oficial del SRI: objeto con <identificador> y <mensaje>
+      if (obj.identificador !== undefined) {
+        mensajes.push({
+          identificador: String(obj.identificador || '0'),
+          mensaje: typeof obj.mensaje === 'string' ? obj.mensaje : String(obj.mensaje || obj.identificador || ''),
+          informacionAdicional: obj.informacionAdicional ? String(obj.informacionAdicional) : undefined,
+          tipo: obj.tipo ? String(obj.tipo) : 'ERROR',
+        });
+        return;
+      }
 
-        if (obj.mensaje && typeof obj.mensaje === 'object') {
-          const mList = Array.isArray(obj.mensaje) ? obj.mensaje : [obj.mensaje];
-          for (const m of mList) {
-            if (m && typeof m === 'object' && (m.identificador || m.mensaje)) {
-              mensajes.push({
-                identificador: String(m.identificador || '0'),
-                mensaje: typeof m.mensaje === 'string' ? m.mensaje : String(m.identificador || ''),
-                informacionAdicional: m.informacionAdicional ? String(m.informacionAdicional) : undefined,
-                tipo: m.tipo ? String(m.tipo) : 'ERROR',
-              });
-            }
-          }
+      for (const key of Object.keys(obj)) {
+        if (typeof obj[key] === 'object') {
+          traverse(obj[key]);
         }
+      }
+    };
 
-        for (const key of Object.keys(obj)) {
-          if (typeof obj[key] === 'object') {
-            findMessages(obj[key]);
-          }
-        }
-      };
-
-      findMessages(parsed);
-    } catch (e) {
-      this.logger.warn(`No se pudo parsear XML de mensajes: ${(e as Error).message}`);
-    }
-
+    traverse(root);
     return mensajes;
   }
 }

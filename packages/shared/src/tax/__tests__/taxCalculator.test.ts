@@ -150,4 +150,54 @@ describe('Motor de Cálculo Tributario SRI (Farmacia)', () => {
     expect(resultPermitido.importeTotal).toBe(45.00);
     expect(resultPermitido.excedeLimiteConsumidorFinal).toBe(false);
   });
+
+  it('debe permitir parametrizar el límite de Consumidor Final y tarifas dinámicas vía config', () => {
+    const items: CartItem[] = [
+      {
+        id: 'item-config',
+        codigo: 'CFG001',
+        descripcion: 'Item con tarifa personalizada',
+        cantidad: 1,
+        precioUnitario: 30.00,
+        descuento: 0,
+        tarifaIva: 12,
+        codigoPorcentajeIva: '2',
+      },
+    ];
+
+    const result = calculateInvoiceTotals(items, { consumidorFinalLimit: 25.00 });
+    expect(result.totalIva).toBe(3.60); // 30.00 * 0.12
+    expect(result.importeTotal).toBe(33.60);
+    expect(result.excedeLimiteConsumidorFinal).toBe(true); // 33.60 > 25.00
+  });
+
+  it('debe mantener consistencia matemática entre suma de IVAs de líneas y detalle agrupado', () => {
+    const items: CartItem[] = [
+      {
+        id: 'item-1',
+        codigo: 'IT1',
+        descripcion: 'Item 1',
+        cantidad: 3,
+        precioUnitario: 1.33,
+        descuento: 0.10,
+        tarifaIva: 15,
+        codigoPorcentajeIva: '4',
+      },
+      {
+        id: 'item-2',
+        codigo: 'IT2',
+        descripcion: 'Item 2',
+        cantidad: 2,
+        precioUnitario: 2.77,
+        descuento: 0.05,
+        tarifaIva: 15,
+        codigoPorcentajeIva: '4',
+      },
+    ];
+
+    const result = calculateInvoiceTotals(items);
+    const sumaDetalle = result.impuestosDetalle.reduce((acc, d) => acc + d.valor, 0);
+    expect(result.totalIva).toBe(Math.round(sumaDetalle * 100) / 100);
+  });
 });
+

@@ -1,11 +1,12 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { AccessKeyService } from '../sri/access-key.service';
 import { XmlBuilderService, FacturaXmlData } from '../sri/xml-builder.service';
 import { XmlSignerService } from '../sri/xml-signer.service';
-import { SriSoapClientService } from '../sri/sri-soap-client.service';
 import { RideGeneratorService } from '../sri/ride-generator.service';
-import { SriMailerService } from '../sri/sri-mailer.service';
-import { calculateInvoiceTotals, CustomerSchema, SriEnvironment } from '@pharmastock/shared';
+import { SriComprobanteRepository } from '../jobs/sri-comprobante.repository';
+import { SriQueueWorker } from '../jobs/sri-queue.worker';
+import { calculateInvoiceTotals, CustomerSchema, SriEnvironment, round2 } from '@pharmastock/shared';
+import { parseXmlToRideData } from './ride-xml-parser.util';
 
 export interface EmitirFacturaDto {
   ambiente?: SriEnvironment;
@@ -20,7 +21,7 @@ export interface EmitirFacturaDto {
   };
   establecimiento: string; // '001'
   puntoEmision: string;    // '001'
-  secuencial: string;      // '000000001'
+  secuencial?: string;     // Opcional: si no se envía, se obtiene atómicamente de la BD
   comprador: {
     tipoIdentificacion: '04' | '05' | '06' | '07' | '08';
     identificacion: string;
@@ -46,44 +47,37 @@ export interface EmitirFacturaDto {
 @Injectable()
 export class InvoicesService {
   private readonly logger = new Logger(InvoicesService.name);
-  // Registro en memoria / cache para comprobantes emitidos
-  private comprobantesCache = new Map<string, {
-    xmlGenerado: string;
-    xmlFirmado: string;
-    xmlData: FacturaXmlData;
-    estado: string;
-    numeroAutorizacion?: string;
-    fechaAutorizacion?: string;
-    mensajes?: unknown[];
-  }>();
 
   constructor(
     private readonly accessKeyService: AccessKeyService,
     private readonly xmlBuilderService: XmlBuilderService,
     private readonly xmlSignerService: XmlSignerService,
-    private readonly soapClient: SriSoapClientService,
     private readonly rideGenerator: RideGeneratorService,
-    private readonly mailerService: SriMailerService,
+    private readonly sriRepository: SriComprobanteRepository,
+    private readonly queueWorker: SriQueueWorker,
   ) {}
 
   public async emitirFactura(dto: EmitirFacturaDto) {
-    // 1. Validar cliente con Zod
+    // 1. Validar comprador con Zod
     const clienteValido = CustomerSchema.safeParse(dto.comprador);
     if (!clienteValido.success) {
       throw new BadRequestException(`Datos de cliente inválidos: ${clienteValido.error.issues.map(i => i.message).join(', ')}`);
     }
 
-    // 2. Calcular totales tributarios con el motor puro de farmacia (0% y 15%)
+    // 2. Totales tributarios con redondeo estricto
     const totales = calculateInvoiceTotals(dto.items);
-
     if (dto.comprador.tipoIdentificacion === '07' && totales.excedeLimiteConsumidorFinal) {
       throw new BadRequestException('Para ventas a Consumidor Final superiores a $50.00 USD es obligatorio identificar al cliente con RUC o Cédula (Resolución SRI).');
     }
 
-    // 3. Generar Clave de Acceso (49 dígitos)
+    // 3. Obtener secuencial atómico de PostgreSQL si no fue fijado manualmente (C3)
+    const secuencial = dto.secuencial?.trim()
+      ? dto.secuencial.padStart(9, '0')
+      : await this.sriRepository.obtenerSiguienteSecuencial('01', dto.establecimiento, dto.puntoEmision);
+
+    // 4. Clave de Acceso (49 dígitos)
     const fechaActual = new Date();
     const ambiente = dto.ambiente || (process.env.SRI_AMBIENTE as SriEnvironment) || '1';
-
     const claveAcceso = this.accessKeyService.generarClaveAcceso({
       fechaEmision: fechaActual,
       tipoComprobante: '01',
@@ -91,7 +85,7 @@ export class InvoicesService {
       ambiente,
       establecimiento: dto.establecimiento,
       puntoEmision: dto.puntoEmision,
-      secuencial: dto.secuencial,
+      secuencial,
       tipoEmision: '1',
     });
 
@@ -100,7 +94,7 @@ export class InvoicesService {
     const y = fechaActual.getFullYear().toString();
     const fechaEmisionStr = `${d}/${m}/${y}`;
 
-    // 4. Construir XML Factura v2.1.0
+    // 5. Construir XML Factura v2.1.0 respetando orden XSD (H1 y H2)
     const xmlData: FacturaXmlData = {
       ambiente,
       tipoEmision: '1',
@@ -111,114 +105,118 @@ export class InvoicesService {
       codDoc: '01',
       estab: dto.establecimiento,
       ptoEmi: dto.puntoEmision,
-      secuencial: dto.secuencial.padStart(9, '0'),
+      secuencial,
       dirMatriz: dto.emisor.dirMatriz,
       dirEstablecimiento: dto.emisor.dirEstablecimiento,
       obligadoContabilidad: dto.emisor.obligadoContabilidad,
       regimenRimpe: dto.emisor.regimenRimpe,
       fechaEmision: fechaEmisionStr,
       comprador: dto.comprador,
-      items: dto.items.map(item => ({
-        codigoPrincipal: item.codigo,
-        descripcion: item.descripcion,
-        cantidad: item.cantidad,
-        precioUnitario: item.precioUnitario,
-        descuento: item.descuento,
-        precioTotalSinImpuesto: item.cantidad * item.precioUnitario - item.descuento,
-        codigoImpuesto: '2',
-        codigoPorcentaje: item.codigoPorcentajeIva,
-        tarifa: item.tarifaIva,
-        valorIva: item.tarifaIva > 0 ? (item.cantidad * item.precioUnitario - item.descuento) * (item.tarifaIva / 100) : 0,
-      })),
+      items: dto.items.map(item => {
+        const itemSinImp = round2(item.cantidad * item.precioUnitario - item.descuento);
+        const valorIva = item.tarifaIva > 0 ? round2(itemSinImp * (item.tarifaIva / 100)) : 0;
+        return {
+          codigoPrincipal: item.codigo,
+          descripcion: item.descripcion,
+          cantidad: item.cantidad,
+          precioUnitario: item.precioUnitario,
+          descuento: item.descuento,
+          precioTotalSinImpuesto: itemSinImp,
+          codigoImpuesto: '2',
+          codigoPorcentaje: item.codigoPorcentajeIva,
+          tarifa: item.tarifaIva,
+          valorIva,
+        };
+      }),
       totales,
       pagos: [{ formaPago: dto.formaPagoCodigo, total: totales.importeTotal }],
     };
 
     const xmlGenerado = this.xmlBuilderService.buildFacturaXml(xmlData);
 
-    // 5. Firma electrónica (si el p12 está configurado o certificado en memoria)
-    let xmlFirmado = xmlGenerado;
+    // 6. Firma electrónica OBLIGATORIA (H3: Hard stop si falta certificado o falla firma)
     const certPath = process.env.SRI_P12_PATH;
     const certPassword = dto.certPassword || process.env.SRI_P12_PASSWORD;
 
-    if (certPath && certPassword) {
-      try {
-        xmlFirmado = this.xmlSignerService.firmarFacturaXml(xmlGenerado, {
-          p12Path: certPath,
-          p12Password: certPassword,
-        });
-      } catch (err) {
-        this.logger.warn(`No se pudo firmar con .p12 físico: ${(err as Error).message}. Se preserva XML pre-firma.`);
-      }
+    if (!certPath || !certPassword) {
+      throw new BadRequestException('Certificado digital .p12 o contraseña no configurados. La firma electrónica es obligatoria.');
     }
 
-    // Guardar en cache para RIDE y descargas
-    this.comprobantesCache.set(claveAcceso, {
-      xmlGenerado,
+    let xmlFirmado: string;
+    try {
+      xmlFirmado = this.xmlSignerService.firmarFacturaXml(xmlGenerado, {
+        p12Path: certPath,
+        p12Password: certPassword,
+      });
+    } catch (err) {
+      this.logger.error(`Error crítico firmando XML con XAdES-BES: ${(err as Error).message}`);
+      throw new BadRequestException(`Fallo crítico al firmar digitalmente el comprobante: ${(err as Error).message}`);
+    }
+
+    // 7. Persistir comprobante inmutable en base de datos (C1)
+    let comprobanteGuardado: { id: string };
+    try {
+      comprobanteGuardado = await this.sriRepository.guardarComprobante({
+        claveAcceso,
+        establecimiento: dto.establecimiento,
+        puntoEmision: dto.puntoEmision,
+        secuencial,
+        estado: 'FIRMADO',
+        xmlGenerado,
+        xmlFirmado,
+        ambiente,
+      });
+    } catch (err: any) {
+      if (
+        err?.code === '23505' ||
+        err?.dbError?.code === '23505' ||
+        String(err?.message).includes('unique constraint') ||
+        String(err?.message).includes('duplicate key')
+      ) {
+        throw new ConflictException(`El comprobante con clave de acceso ${claveAcceso} ya fue registrado previamente.`);
+      }
+      throw err;
+    }
+
+    // 8. Crear job y encolar para transmisión asíncrona al SRI (C2)
+    const job = await this.sriRepository.crearSriJob(comprobanteGuardado.id);
+    await this.queueWorker.despacharInmediato({
+      id: job.id,
+      comprobanteId: comprobanteGuardado.id,
+      claveAcceso,
       xmlFirmado,
-      xmlData,
-      estado: 'GENERADO',
+      ambiente,
     });
 
     return {
+      id: comprobanteGuardado.id,
+      jobId: job.id,
       claveAcceso,
-      secuencial: `${dto.establecimiento}-${dto.puntoEmision}-${dto.secuencial.padStart(9, '0')}`,
+      secuencial: `${dto.establecimiento}-${dto.puntoEmision}-${secuencial}`,
       fechaEmision: fechaEmisionStr,
       totales,
-      estado: 'GENERADO',
+      estado: 'FIRMADO',
       ambiente: ambiente === '1' ? 'PRUEBAS' : 'PRODUCCIÓN',
     };
   }
 
   public async obtenerRidePdf(claveAcceso: string): Promise<Buffer> {
-    const registro = this.comprobantesCache.get(claveAcceso);
+    const registro = await this.sriRepository.obtenerComprobantePorClave(claveAcceso);
     if (!registro) {
       throw new NotFoundException(`Comprobante con clave ${claveAcceso} no encontrado`);
     }
 
-    const { xmlData, numeroAutorizacion, fechaAutorizacion } = registro;
-
-    return await this.rideGenerator.generarRidePdf({
-      emisor: {
-        razonSocial: xmlData.razonSocial,
-        nombreComercial: xmlData.nombreComercial,
-        ruc: xmlData.ruc,
-        dirMatriz: xmlData.dirMatriz,
-        dirEstablecimiento: xmlData.dirEstablecimiento,
-        obligadoContabilidad: xmlData.obligadoContabilidad,
-        regimenRimpe: xmlData.regimenRimpe,
-        ambiente: xmlData.ambiente,
-        tipoEmision: xmlData.tipoEmision,
-      },
-      factura: {
-        secuencialCompleto: `${xmlData.estab}-${xmlData.ptoEmi}-${xmlData.secuencial}`,
-        claveAcceso: xmlData.claveAcceso,
-        numeroAutorizacion: numeroAutorizacion || xmlData.claveAcceso,
-        fechaAutorizacion: fechaAutorizacion || xmlData.fechaEmision,
-        fechaEmision: xmlData.fechaEmision,
-      },
-      cliente: xmlData.comprador,
-      items: xmlData.items.map(i => ({
-        codigo: i.codigoPrincipal,
-        descripcion: i.descripcion,
-        cantidad: i.cantidad,
-        precioUnitario: i.precioUnitario,
-        descuento: i.descuento,
-        precioTotal: i.precioTotalSinImpuesto,
-      })),
-      totales: xmlData.totales,
-      pagos: xmlData.pagos.map(p => ({
-        formaPagoNombre: p.formaPago === '01' ? 'SIN UTILIZACION DEL SISTEMA FINANCIERO' : 'OTROS CON UTILIZACION DEL SF',
-        total: p.total,
-      })),
-    });
+    const xml = registro.xml_firmado || registro.xml_generado;
+    const rideData = parseXmlToRideData(xml, registro.num_autorizacion, registro.fecha_autorizacion);
+    return await this.rideGenerator.generarRidePdf(rideData);
   }
 
-  public obtenerXml(claveAcceso: string): string {
-    const registro = this.comprobantesCache.get(claveAcceso);
+  public async obtenerXml(claveAcceso: string): Promise<string> {
+    const registro = await this.sriRepository.obtenerComprobantePorClave(claveAcceso);
     if (!registro) {
       throw new NotFoundException(`Comprobante con clave ${claveAcceso} no encontrado`);
     }
-    return registro.xmlFirmado || registro.xmlGenerado;
+    return registro.xml_firmado || registro.xml_generado;
   }
 }
+

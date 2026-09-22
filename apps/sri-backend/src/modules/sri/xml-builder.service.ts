@@ -47,6 +47,7 @@ export interface FacturaXmlData {
   dirEstablecimiento: string;
   contribuyenteEspecial?: string;
   obligadoContabilidad: 'SI' | 'NO';
+  regimenMicroempresas?: string;
   regimenRimpe?: string;
   fechaEmision: string; // dd/mm/aaaa
   comprador: {
@@ -70,13 +71,14 @@ export interface FacturaXmlData {
 @Injectable()
 export class XmlBuilderService {
   /**
-   * Construye el nodo infoTributaria
+   * Construye el nodo infoTributaria en estricto orden XSD del SRI
    */
   private buildInfoTributaria(data: FacturaXmlData) {
     const info: Record<string, unknown> = {
       ambiente: data.ambiente,
       tipoEmision: data.tipoEmision,
       razonSocial: data.razonSocial,
+      ...(data.nombreComercial ? { nombreComercial: data.nombreComercial } : {}),
       ruc: data.ruc,
       claveAcceso: data.claveAcceso,
       codDoc: data.codDoc,
@@ -84,20 +86,15 @@ export class XmlBuilderService {
       ptoEmi: data.ptoEmi,
       secuencial: data.secuencial,
       dirMatriz: data.dirMatriz,
+      ...(data.regimenMicroempresas ? { regimenMicroempresas: data.regimenMicroempresas } : {}),
+      ...(data.regimenRimpe ? { contribuyenteRimpe: data.regimenRimpe } : {}),
     };
-
-    if (data.nombreComercial) {
-      info.nombreComercial = data.nombreComercial;
-    }
-    if (data.regimenRimpe) {
-      info.regimenMicroempresas = data.regimenRimpe;
-    }
 
     return info;
   }
 
   /**
-   * Construye el nodo infoFactura con desglose de impuestos y pagos
+   * Construye el nodo infoFactura en estricto orden XSD con desglose de impuestos y pagos
    */
   private buildInfoFactura(data: FacturaXmlData) {
     const totalImpuestos = data.totales.impuestosDetalle.map((imp) => ({
@@ -121,6 +118,7 @@ export class XmlBuilderService {
       tipoIdentificacionComprador: data.comprador.tipoIdentificacion,
       razonSocialComprador: data.comprador.razonSocial,
       identificacionComprador: data.comprador.identificacion,
+      ...(data.comprador.direccion ? { direccionComprador: data.comprador.direccion } : {}),
       totalSinImpuestos: data.totales.totalSinImpuestos.toFixed(2),
       totalDescuento: data.totales.totalDescuento.toFixed(2),
       totalConImpuestos: { totalImpuesto: totalImpuestos },

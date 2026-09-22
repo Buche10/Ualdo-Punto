@@ -116,10 +116,22 @@ describe('XmlBuilderService (Generación XML Factura v2.1.0 SRI)', () => {
     expect(xml).toContain('<codigoPrincipal>INS001</codigoPrincipal>');
   });
 
-  it('debe incluir información adicional como email del comprador', () => {
+  it('debe respetar el orden de elementos XSD oficial en infoTributaria (nombreComercial antes de ruc)', () => {
     const xml = service.buildFacturaXml(mockFacturaData);
 
-    expect(xml).toContain('<infoAdicional>');
-    expect(xml).toContain('<campoAdicional nombre="Email">cliente@farmacia.com</campoAdicional>');
+    const posRazonSocial = xml.indexOf('<razonSocial>');
+    const posNombreComercial = xml.indexOf('<nombreComercial>');
+    const posRuc = xml.indexOf('<ruc>');
+    const posClaveAcceso = xml.indexOf('<claveAcceso>');
+    const posDirMatriz = xml.indexOf('<dirMatriz>');
+    const posRimpe = xml.indexOf('<contribuyenteRimpe>');
+
+    expect(posRazonSocial).toBeGreaterThan(-1);
+    expect(posNombreComercial).toBeGreaterThan(posRazonSocial);
+    expect(posRuc).toBeGreaterThan(posNombreComercial);
+    expect(posClaveAcceso).toBeGreaterThan(posRuc);
+    expect(posDirMatriz).toBeGreaterThan(posClaveAcceso);
+    expect(posRimpe).toBeGreaterThan(posDirMatriz);
   });
 });
+

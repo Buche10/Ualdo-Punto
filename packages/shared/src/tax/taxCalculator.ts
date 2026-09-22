@@ -5,8 +5,8 @@ export interface CartItem {
   cantidad: number;
   precioUnitario: number;
   descuento: number;
-  tarifaIva: number; // 0, 15
-  codigoPorcentajeIva: string; // '0', '4'
+  tarifaIva: number; // 0, 15 u otra tarifa porcentual
+  codigoPorcentajeIva: string; // '0' para 0%, '4' para 15%, etc.
 }
 
 export interface TaxBreakdown {
@@ -15,6 +15,11 @@ export interface TaxBreakdown {
   tarifa: number;
   baseImponible: number;
   valor: number;
+}
+
+export interface TaxConfig {
+  consumidorFinalLimit?: number;
+  defaultIvaRate?: number;
 }
 
 export interface InvoiceTotals {
@@ -39,26 +44,40 @@ export function round2(val: number): number {
 /**
  * Motor de cálculo tributario según la normativa de comprobantes electrónicos del SRI
  */
-export function calculateInvoiceTotals(items: CartItem[]): InvoiceTotals {
+export function calculateInvoiceTotals(items: CartItem[], config?: TaxConfig): InvoiceTotals {
+  const consumidorFinalLimit = config?.consumidorFinalLimit ?? 50.00;
+
   let subtotal0 = 0;
   let subtotal15 = 0;
   let totalDescuento = 0;
   let totalIva = 0;
 
+  // Agrupador dinámico por código de porcentaje y tarifa
+  const taxGroups = new Map<string, { tarifa: number; base: number; valor: number }>();
+
   for (const item of items) {
     const itemSubtotalBruto = item.cantidad * item.precioUnitario;
     const itemDescuento = item.descuento || 0;
-    const itemBaseImponible = Math.max(0, itemSubtotalBruto - itemDescuento);
+    const itemBaseImponible = round2(Math.max(0, itemSubtotalBruto - itemDescuento));
 
     totalDescuento += itemDescuento;
 
-    if (item.tarifaIva === 0) {
+    const tarifa = item.tarifaIva;
+    const codigoPorcentaje = item.codigoPorcentajeIva || (tarifa === 0 ? '0' : '4');
+
+    if (tarifa === 0) {
       subtotal0 += itemBaseImponible;
-    } else if (item.tarifaIva === 15) {
+    } else if (tarifa === 15) {
       subtotal15 += itemBaseImponible;
-      const ivaLinea = round2(itemBaseImponible * 0.15);
-      totalIva += ivaLinea;
     }
+
+    const ivaLinea = tarifa > 0 ? round2(itemBaseImponible * (tarifa / 100)) : 0;
+    totalIva += ivaLinea;
+
+    const existingGroup = taxGroups.get(codigoPorcentaje) || { tarifa, base: 0, valor: 0 };
+    existingGroup.base += itemBaseImponible;
+    existingGroup.valor += ivaLinea;
+    taxGroups.set(codigoPorcentaje, existingGroup);
   }
 
   subtotal0 = round2(subtotal0);
@@ -66,30 +85,25 @@ export function calculateInvoiceTotals(items: CartItem[]): InvoiceTotals {
   totalDescuento = round2(totalDescuento);
   totalIva = round2(totalIva);
 
-  const totalSinImpuestos = round2(subtotal0 + subtotal15);
-  const importeTotal = round2(totalSinImpuestos + totalIva);
-
+  let totalSinImpuestos = 0;
   const impuestosDetalle: TaxBreakdown[] = [];
 
-  if (subtotal0 > 0) {
+  for (const [codPorc, group] of taxGroups.entries()) {
+    const baseRedondeada = round2(group.base);
+    const valorRedondeado = round2(group.valor);
+    totalSinImpuestos += baseRedondeada;
+
     impuestosDetalle.push({
       codigo: '2', // IVA
-      codigoPorcentaje: '0', // 0%
-      tarifa: 0,
-      baseImponible: subtotal0,
-      valor: 0.00,
+      codigoPorcentaje: codPorc,
+      tarifa: group.tarifa,
+      baseImponible: baseRedondeada,
+      valor: valorRedondeado,
     });
   }
 
-  if (subtotal15 > 0) {
-    impuestosDetalle.push({
-      codigo: '2', // IVA
-      codigoPorcentaje: '4', // 15%
-      tarifa: 15,
-      baseImponible: subtotal15,
-      valor: totalIva,
-    });
-  }
+  totalSinImpuestos = round2(totalSinImpuestos);
+  const importeTotal = round2(totalSinImpuestos + totalIva);
 
   return {
     subtotal0,
@@ -99,7 +113,7 @@ export function calculateInvoiceTotals(items: CartItem[]): InvoiceTotals {
     totalIva,
     propina: 0.00,
     importeTotal,
-    excedeLimiteConsumidorFinal: importeTotal > 50.00,
+    excedeLimiteConsumidorFinal: importeTotal > consumidorFinalLimit,
     impuestosDetalle,
   };
 }
