@@ -35,7 +35,7 @@ export class SriComprobanteRepository implements ISriComprobanteRepository {
     const { data, error } = await client
       .from('comprobantes')
       .insert({
-        tipo_comprobante: '01',
+        tipo_comprobante: input.tipoComprobante || '01',
         clave_acceso: input.claveAcceso,
         establecimiento: input.establecimiento,
         punto_emision: input.puntoEmision,

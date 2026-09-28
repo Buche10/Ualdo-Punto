@@ -6,7 +6,9 @@ import { InvoiceStatusModal } from './InvoiceStatusModal';
 import { ScannerModal } from '../ScannerModal';
 import { ProductSearchBar } from './ProductSearchBar';
 import { SalesSummaryPanel } from './SalesSummaryPanel';
+import { DevolucionModal } from './DevolucionModal';
 import { apiClient } from '../../api/apiClient';
+import { ArrowLeftRight } from 'lucide-react';
 
 export const SalesScreen = ({ products = [], onSaleCompleted, isDarkMode }) => {
   const [cart, setCart] = useState([]);
@@ -23,6 +25,7 @@ export const SalesScreen = ({ products = [], onSaleCompleted, isDarkMode }) => {
 
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [invoiceData, setInvoiceData] = useState(null);
+  const [devolucionModalOpen, setDevolucionModalOpen] = useState(false);
 
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -138,14 +141,31 @@ export const SalesScreen = ({ products = [], onSaleCompleted, isDarkMode }) => {
 
   return (
     <div className="space-y-4">
-      <ProductSearchBar
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        filteredProducts={filteredProducts}
-        onAddToCart={handleAddToCart}
-        onOpenScanner={() => setIsScannerOpen(true)}
-        isDarkMode={isDarkMode}
-      />
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1">
+          <ProductSearchBar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            filteredProducts={filteredProducts}
+            onAddToCart={handleAddToCart}
+            onOpenScanner={() => setIsScannerOpen(true)}
+            isDarkMode={isDarkMode}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setDevolucionModalOpen(true)}
+          className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold transition border shadow-sm ${
+            isDarkMode
+              ? 'bg-slate-900 border-slate-700/80 text-rose-400 hover:bg-slate-800 hover:text-rose-300'
+              : 'bg-white border-slate-200 text-rose-600 hover:bg-rose-50'
+          }`}
+          title="Emitir Nota de Crédito (Devolución)"
+        >
+          <ArrowLeftRight className="w-4 h-4 text-rose-500" />
+          <span className="hidden sm:inline">Devolución / NC</span>
+        </button>
+      </div>
 
       {errorMessage && (
         <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold">
@@ -197,6 +217,12 @@ export const SalesScreen = ({ products = [], onSaleCompleted, isDarkMode }) => {
           setInvoiceData(null);
         }}
         clientEmail={cliente?.email}
+        isDarkMode={isDarkMode}
+      />
+
+      <DevolucionModal
+        isOpen={devolucionModalOpen}
+        onClose={() => setDevolucionModalOpen(false)}
         isDarkMode={isDarkMode}
       />
     </div>

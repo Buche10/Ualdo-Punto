@@ -68,6 +68,56 @@ export interface FacturaXmlData {
   }>;
 }
 
+export interface NotaCreditoItemXml {
+  codigoInterno: string;
+  codigoAdicional?: string;
+  descripcion: string;
+  cantidad: number;
+  precioUnitario: number;
+  descuento: number;
+  precioTotalSinImpuesto: number;
+  codigoImpuesto: string;
+  codigoPorcentaje: string;
+  tarifa: number;
+  valorIva: number;
+}
+
+export interface NotaCreditoXmlData {
+  ambiente: SriEnvironment;
+  tipoEmision: SriEmissionType;
+  razonSocial: string;
+  nombreComercial?: string;
+  ruc: string;
+  claveAcceso: string;
+  codDoc: '04';
+  estab: string;
+  ptoEmi: string;
+  secuencial: string;
+  dirMatriz: string;
+  dirEstablecimiento?: string;
+  contribuyenteEspecial?: string;
+  obligadoContabilidad: 'SI' | 'NO';
+  regimenRimpe?: string;
+  fechaEmision: string; // dd/mm/aaaa
+  comprador: {
+    tipoIdentificacion: string;
+    razonSocial: string;
+    identificacion: string;
+    direccion?: string;
+    email?: string;
+    telefono?: string;
+  };
+  documentoModificado: {
+    codDoc: '01';
+    numDoc: string; // 001-001-000000001
+    fechaEmision: string; // dd/mm/aaaa
+    claveAcceso: string; // Clave de acceso de la factura original
+  };
+  motivo: string;
+  items: NotaCreditoItemXml[];
+  totales: FacturaTotalesXml;
+}
+
 @Injectable()
 export class XmlBuilderService {
   /**
@@ -191,6 +241,90 @@ export class XmlBuilderService {
     if (infoAdicional) {
       (rootObj.factura as Record<string, unknown>).infoAdicional = infoAdicional;
     }
+
+    const doc = create({ version: '1.0', encoding: 'UTF-8' }, rootObj);
+    return doc.end({ prettyPrint: true });
+  }
+
+  /**
+   * Genera el XML completo de la Nota de Crédito v1.0.0 / v1.1.0 para el SRI
+   */
+  public buildNotaCreditoXml(data: NotaCreditoXmlData): string {
+    const totalImpuestos = data.totales.impuestosDetalle.map((imp) => ({
+      codigo: imp.codigo,
+      codigoPorcentaje: imp.codigoPorcentaje,
+      baseImponible: imp.baseImponible.toFixed(2),
+      valor: imp.valor.toFixed(2),
+    }));
+
+    const detalles = data.items.map((item) => ({
+      codigoInterno: item.codigoInterno,
+      ...(item.codigoAdicional ? { codigoAdicional: item.codigoAdicional } : {}),
+      descripcion: item.descripcion,
+      cantidad: item.cantidad.toFixed(2),
+      precioUnitario: item.precioUnitario.toFixed(2),
+      descuento: item.descuento.toFixed(2),
+      precioTotalSinImpuesto: item.precioTotalSinImpuesto.toFixed(2),
+      impuestos: {
+        impuesto: {
+          codigo: item.codigoImpuesto,
+          codigoPorcentaje: item.codigoPorcentaje,
+          tarifa: item.tarifa.toFixed(2),
+          baseImponible: item.precioTotalSinImpuesto.toFixed(2),
+          valor: item.valorIva.toFixed(2),
+        },
+      },
+    }));
+
+    const camposAdicionales: Array<{ '@nombre': string; '#': string }> = [
+      { '@nombre': 'ClaveAccesoFactura', '#': data.documentoModificado.claveAcceso },
+    ];
+    if (data.comprador.email) {
+      camposAdicionales.push({ '@nombre': 'Email', '#': data.comprador.email });
+    }
+    if (data.comprador.direccion) {
+      camposAdicionales.push({ '@nombre': 'Direccion', '#': data.comprador.direccion });
+    }
+
+    const rootObj: Record<string, unknown> = {
+      notaCredito: {
+        '@id': 'comprobante',
+        '@version': '1.0.0',
+        infoTributaria: {
+          ambiente: data.ambiente,
+          tipoEmision: data.tipoEmision,
+          razonSocial: data.razonSocial,
+          ...(data.nombreComercial ? { nombreComercial: data.nombreComercial } : {}),
+          ruc: data.ruc,
+          claveAcceso: data.claveAcceso,
+          codDoc: data.codDoc,
+          estab: data.estab,
+          ptoEmi: data.ptoEmi,
+          secuencial: data.secuencial,
+          dirMatriz: data.dirMatriz,
+          ...(data.regimenRimpe ? { regimenRimpe: data.regimenRimpe } : {}),
+        },
+        infoNotaCredito: {
+          fechaEmision: data.fechaEmision,
+          ...(data.dirEstablecimiento ? { dirEstablecimiento: data.dirEstablecimiento } : {}),
+          tipoIdentificacionComprador: data.comprador.tipoIdentificacion,
+          razonSocialComprador: data.comprador.razonSocial,
+          identificacionComprador: data.comprador.identificacion,
+          ...(data.contribuyenteEspecial ? { contribuyenteEspecial: data.contribuyenteEspecial } : {}),
+          obligadoContabilidad: data.obligadoContabilidad,
+          codDocModificado: data.documentoModificado.codDoc,
+          numDocModificado: data.documentoModificado.numDoc,
+          fechaEmisionDocSustento: data.documentoModificado.fechaEmision,
+          totalSinImpuestos: data.totales.totalSinImpuestos.toFixed(2),
+          valorModificacion: data.totales.importeTotal.toFixed(2),
+          moneda: 'DOLAR',
+          totalConImpuestos: { totalImpuesto: totalImpuestos },
+          motivo: data.motivo,
+        },
+        detalles: { detalle: detalles },
+        infoAdicional: { campoAdicional: camposAdicionales },
+      },
+    };
 
     const doc = create({ version: '1.0', encoding: 'UTF-8' }, rootObj);
     return doc.end({ prettyPrint: true });

@@ -7,6 +7,7 @@ import { JobsModule } from './modules/jobs/jobs.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { SalesModule } from './modules/sales/sales.module';
 import { CustomersModule } from './modules/customers/customers.module';
+import { CreditNotesModule } from './modules/credit-notes/credit-notes.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CustomersModule } from './modules/customers/customers.module';
     InvoicesModule,
     SalesModule,
     CustomersModule,
+    CreditNotesModule,
   ],
   providers: [
     {

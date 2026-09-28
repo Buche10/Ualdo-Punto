@@ -81,6 +81,13 @@ export const apiClient = {
       body: JSON.stringify(payload),
     }),
 
+  // Notas de Crédito SRI (Devoluciones)
+  emitirNotaCredito: (ncPayload) =>
+    request('/credit-notes/emitir', {
+      method: 'POST',
+      body: JSON.stringify(ncPayload),
+    }),
+
   descargarRide: async (claveAcceso) => {
     const baseUrl = getBaseUrl().replace(/\/$/, '');
     const apiKey = getApiKey();

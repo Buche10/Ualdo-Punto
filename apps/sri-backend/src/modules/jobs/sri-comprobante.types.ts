@@ -1,7 +1,8 @@
-import { SriComprobanteEstado, SriEnvironment } from '@pharmastock/shared';
+import { SriComprobanteEstado, SriEnvironment, SriDocType } from '@pharmastock/shared';
 
 export interface GuardarComprobanteInput {
   claveAcceso: string;
+  tipoComprobante?: SriDocType;
   establecimiento: string;
   puntoEmision: string;
   secuencial: string;
