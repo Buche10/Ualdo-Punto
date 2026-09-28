@@ -21,6 +21,23 @@ export class InvoicesController {
     return createSuccessResponse(totales);
   }
 
+  @Get('pendientes')
+  @UseGuards(ApiKeyGuard)
+  public async consultarVentasPendientes() {
+    const pendientes = await this.invoicesService.consultarVentasSinFacturaAutorizada();
+    return createSuccessResponse(pendientes);
+  }
+
+  @Post('reemitir/:ventaId')
+  @UseGuards(ApiKeyGuard)
+  public async reemitirFactura(
+    @Param('ventaId') ventaId: string,
+    @Body() body: any,
+  ) {
+    const resultado = await this.invoicesService.reemitirFactura(ventaId, body);
+    return createSuccessResponse(resultado);
+  }
+
   @Get(':claveAcceso/estado')
   public async consultarEstado(@Param('claveAcceso') claveAcceso: string) {
     const estado = await this.invoicesService.obtenerEstado(claveAcceso);

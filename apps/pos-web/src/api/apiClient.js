@@ -72,6 +72,15 @@ export const apiClient = {
   obtenerEstadoFactura: (claveAcceso) =>
     request(`/invoices/${encodeURIComponent(claveAcceso)}/estado`),
 
+  obtenerVentasPendientesFacturacion: () =>
+    request('/invoices/pendientes'),
+
+  reemitirFacturaVenta: (ventaId, payload = {}) =>
+    request(`/invoices/reemitir/${encodeURIComponent(ventaId)}`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
   descargarRide: async (claveAcceso) => {
     const baseUrl = getBaseUrl().replace(/\/$/, '');
     const apiKey = getApiKey();

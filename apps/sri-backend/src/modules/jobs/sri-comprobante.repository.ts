@@ -220,4 +220,102 @@ export class SriComprobanteRepository implements ISriComprobanteRepository {
       maxIntentos: row.max_intentos,
     }));
   }
+
+  public async obtenerVentaConDetallesPorId(ventaId: string) {
+    const client = this.supabaseService.getClientOrThrow();
+    const { data, error } = await client
+      .from('ventas')
+      .select('*, clientes(*), venta_detalle(*), comprobantes(*)')
+      .eq('id', ventaId)
+      .maybeSingle();
+
+    if (error) {
+      this.logger.error(`Error al consultar venta ${ventaId}: ${error.message}`);
+      throw new InternalServerErrorException(`Error de base de datos: ${error.message}`);
+    }
+    return data || null;
+  }
+
+  public async consultarVentasSinFacturaAutorizada() {
+    const client = this.supabaseService.getClientOrThrow();
+    const { data, error } = await client
+      .from('ventas')
+      .select('id, cliente_id, subtotal_0, subtotal_15, total_descuento, total_iva, importe_total, forma_pago_codigo, estado, created_at, clientes(id, tipo_identificacion, identificacion, razon_social, email, telefono, direccion), comprobantes(id, clave_acceso, establecimiento, punto_emision, secuencial, estado, created_at, updated_at)')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      this.logger.error(`Error al consultar ventas sin factura autorizada: ${error.message}`);
+      throw new InternalServerErrorException(`Error de base de datos: ${error.message}`);
+    }
+
+    if (!Array.isArray(data)) return [];
+
+    return data
+      .filter((v: any) => {
+        const comps = v.comprobantes || [];
+        const tieneAutorizado = comps.some((c: any) => c.estado === 'AUTORIZADO');
+        return !tieneAutorizado;
+      })
+      .map((v: any) => {
+        const comps = v.comprobantes || [];
+        const ultimoComp = comps.length > 0 ? comps[comps.length - 1] : null;
+        return {
+          ventaId: v.id,
+          fecha: v.created_at,
+          importeTotal: v.importe_total,
+          formaPagoCodigo: v.forma_pago_codigo,
+          estadoVenta: v.estado,
+          cliente: v.clientes,
+          comprobante: ultimoComp ? {
+            id: ultimoComp.id,
+            claveAcceso: ultimoComp.clave_acceso,
+            secuencial: `${ultimoComp.establecimiento}-${ultimoComp.punto_emision}-${ultimoComp.secuencial}`,
+            estado: ultimoComp.estado,
+          } : null,
+          motivo: ultimoComp ? ultimoComp.estado : 'SIN_COMPROBANTE',
+        };
+      });
+  }
+
+  public async obtenerJobPorComprobanteId(comprobanteId: string): Promise<{ id: string; estado: string; intentos: number } | null> {
+    const client = this.supabaseService.getClientOrThrow();
+    const { data, error } = await client
+      .from('sri_jobs')
+      .select('id, estado, intentos')
+      .eq('comprobante_id', comprobanteId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      this.logger.warn(`Error buscando job para comprobante ${comprobanteId}: ${error.message}`);
+      return null;
+    }
+    return data || null;
+  }
+
+  public async reiniciarJob(jobId: string): Promise<boolean> {
+    const client = this.supabaseService.getClientOrThrow();
+    const { error } = await client
+      .from('sri_jobs')
+      .update({
+        estado: 'PENDIENTE',
+        intentos: 0,
+        proximo_intento: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+
+    if (error) {
+      this.logger.error(`Error al reiniciar job ${jobId}: ${error.message}`);
+      throw new InternalServerErrorException(`Error al reiniciar job en BD: ${error.message}`);
+    }
+    return true;
+  }
+
+  public async obtenerEmisorConfig() {
+    const client = this.supabaseService.getClientOrThrow();
+    const { data } = await client.from('emisor').select('*').limit(1).maybeSingle();
+    return data || null;
+  }
 }
