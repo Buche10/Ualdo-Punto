@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  sri-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pharmastock-sri-backend:latest
+    container_name: pharmastock-sri-backend
+    restart: always
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      - PORT=3001
+      - SRI_AMBIENTE=${SRI_AMBIENTE:-1}
+      - SRI_REQUIRE_DB=${SRI_REQUIRE_DB:-true}
+      - SRI_P12_PATH=${SRI_P12_PATH:-/etc/secrets/firma.p12}
+      - SRI_P12_BASE64=${SRI_P12_BASE64:-}
+      - SRI_P12_PASSWORD=${SRI_P12_PASSWORD}
+      - SRI_RUC_EMISOR=${SRI_RUC_EMISOR}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - POS_API_KEY=${POS_API_KEY}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+    volumes:
+      # Opcional: montar el certificado .p12 desde disco del host
+      - ./certs:/etc/secrets:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

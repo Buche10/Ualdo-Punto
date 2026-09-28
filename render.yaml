@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: pharmastock-sri-backend
+    runtime: docker
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    plan: starter
+    region: ohio
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: SRI_AMBIENTE
+        sync: false
+      - key: SRI_REQUIRE_DB
+        value: "true"
+      - key: SRI_P12_BASE64
+        sync: false
+      - key: SRI_P12_PASSWORD
+        sync: false
+      - key: SRI_RUC_EMISOR
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: POS_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false

@@ -200,15 +200,17 @@ export class InvoicesReconciliationService {
     const xmlGenerado = this.xmlBuilderService.buildFacturaXml(xmlData);
 
     const certPath = process.env.SRI_P12_PATH;
+    const certBase64 = process.env.SRI_P12_BASE64;
     const certPassword = options?.certPassword || process.env.SRI_P12_PASSWORD;
-    if (!certPath || !certPassword) {
-      throw new BadRequestException('Certificado digital .p12 o contraseña no configurados. La firma electrónica es obligatoria.');
+    if ((!certPath && !certBase64) || !certPassword) {
+      throw new BadRequestException('Certificado digital .p12 (SRI_P12_PATH o SRI_P12_BASE64) o contraseña no configurados. La firma electrónica es obligatoria.');
     }
 
     let xmlFirmado: string;
     try {
       xmlFirmado = this.xmlSignerService.firmarFacturaXml(xmlGenerado, {
         p12Path: certPath,
+        p12Base64: certBase64,
         p12Password: certPassword,
       });
     } catch (err) {

@@ -110,6 +110,128 @@ describe('XmlSignerService (Firma XAdES-BES SRI)', () => {
     expect(xmlFirmado).toContain('<xades:SignedProperties');
   });
 
+  it('debe firmar exitosamente cuando el certificado se provee en base64 en la configuración', () => {
+    const xmlOriginal = builderService.buildFacturaXml({
+      ambiente: '1',
+      tipoEmision: '1',
+      razonSocial: 'FARMACIA TEST S.A.',
+      ruc: '1790016919001',
+      claveAcceso: '2109202601179001691900110010010000000011234567818',
+      codDoc: '01',
+      estab: '001',
+      ptoEmi: '001',
+      secuencial: '000000001',
+      dirMatriz: 'Quito',
+      dirEstablecimiento: 'Quito',
+      obligadoContabilidad: 'NO',
+      fechaEmision: '21/09/2026',
+      comprador: {
+        tipoIdentificacion: '07',
+        razonSocial: 'CONSUMIDOR FINAL',
+        identificacion: '9999999999999',
+      },
+      items: [
+        {
+          codigoPrincipal: 'MED001',
+          descripcion: 'Paracetamol',
+          cantidad: 1,
+          precioUnitario: 1.00,
+          descuento: 0,
+          precioTotalSinImpuesto: 1.00,
+          codigoImpuesto: '2',
+          codigoPorcentaje: '0',
+          tarifa: 0,
+          valorIva: 0.00,
+        },
+      ],
+      totales: {
+        subtotal0: 1.00,
+        subtotal15: 0.00,
+        totalSinImpuestos: 1.00,
+        totalDescuento: 0.00,
+        totalIva: 0.00,
+        propina: 0.00,
+        importeTotal: 1.00,
+        impuestosDetalle: [],
+      },
+      pagos: [{ formaPago: '01', total: 1.00 }],
+    });
+
+    const base64Cert = p12Buffer.toString('base64');
+    const xmlFirmado = signerService.firmarFacturaXml(xmlOriginal, {
+      p12Base64: base64Cert,
+      p12Password: password,
+    });
+
+    expect(xmlFirmado).toBeDefined();
+    expect(signerService.tieneFirmaDigital(xmlFirmado)).toBe(true);
+  });
+
+  it('debe firmar exitosamente cuando el certificado se provee vía variable SRI_P12_BASE64', () => {
+    const xmlOriginal = builderService.buildFacturaXml({
+      ambiente: '1',
+      tipoEmision: '1',
+      razonSocial: 'FARMACIA TEST S.A.',
+      ruc: '1790016919001',
+      claveAcceso: '2109202601179001691900110010010000000011234567818',
+      codDoc: '01',
+      estab: '001',
+      ptoEmi: '001',
+      secuencial: '000000001',
+      dirMatriz: 'Quito',
+      dirEstablecimiento: 'Quito',
+      obligadoContabilidad: 'NO',
+      fechaEmision: '21/09/2026',
+      comprador: {
+        tipoIdentificacion: '07',
+        razonSocial: 'CONSUMIDOR FINAL',
+        identificacion: '9999999999999',
+      },
+      items: [
+        {
+          codigoPrincipal: 'MED001',
+          descripcion: 'Paracetamol',
+          cantidad: 1,
+          precioUnitario: 1.00,
+          descuento: 0,
+          precioTotalSinImpuesto: 1.00,
+          codigoImpuesto: '2',
+          codigoPorcentaje: '0',
+          tarifa: 0,
+          valorIva: 0.00,
+        },
+      ],
+      totales: {
+        subtotal0: 1.00,
+        subtotal15: 0.00,
+        totalSinImpuestos: 1.00,
+        totalDescuento: 0.00,
+        totalIva: 0.00,
+        propina: 0.00,
+        importeTotal: 1.00,
+        impuestosDetalle: [],
+      },
+      pagos: [{ formaPago: '01', total: 1.00 }],
+    });
+
+    const prevEnv = process.env.SRI_P12_BASE64;
+    try {
+      process.env.SRI_P12_BASE64 = p12Buffer.toString('base64');
+      const xmlFirmado = signerService.firmarFacturaXml(xmlOriginal, {
+        p12Password: password,
+      });
+
+      expect(xmlFirmado).toBeDefined();
+      expect(signerService.tieneFirmaDigital(xmlFirmado)).toBe(true);
+    } finally {
+      if (prevEnv !== undefined) {
+        process.env.SRI_P12_BASE64 = prevEnv;
+      } else {
+        delete process.env.SRI_P12_BASE64;
+      }
+    }
+  });
+
   it('debe lanzar error cuando la contraseña del certificado es incorrecta', () => {
     const xmlOriginal = '<factura id="comprobante" version="2.1.0"></factura>';
     expect(() => {

@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.github
+.env
+.env.*
+!.env.example
+coverage
+*.log
+output
+scratch
+.system_generated
+.gemini
+*.p12
+*.pfx

@@ -5,6 +5,7 @@ import * as fs from 'fs';
 export interface SignerConfig {
   p12Path?: string;
   p12Buffer?: Buffer;
+  p12Base64?: string;
   p12Password: string;
 }
 
@@ -13,16 +14,25 @@ export class XmlSignerService {
   private readonly logger = new Logger(XmlSignerService.name);
 
   /**
-   * Obtiene el buffer del certificado PKCS#12 desde archivo o buffer en memoria
+   * Obtiene el buffer del certificado PKCS#12 desde archivo, base64 o buffer en memoria
    */
   private getCertificateBuffer(config: SignerConfig): Buffer {
     if (config.p12Buffer) {
       return config.p12Buffer;
     }
+    if (config.p12Base64) {
+      return Buffer.from(config.p12Base64, 'base64');
+    }
     if (config.p12Path && fs.existsSync(config.p12Path)) {
       return fs.readFileSync(config.p12Path);
     }
-    throw new Error('Certificado .p12 no disponible. Configure p12Path o p12Buffer.');
+    if (process.env.SRI_P12_BASE64) {
+      return Buffer.from(process.env.SRI_P12_BASE64, 'base64');
+    }
+    if (process.env.SRI_P12_PATH && fs.existsSync(process.env.SRI_P12_PATH)) {
+      return fs.readFileSync(process.env.SRI_P12_PATH);
+    }
+    throw new Error('Certificado .p12 no disponible. Configure SRI_P12_PATH o SRI_P12_BASE64.');
   }
 
   /**
