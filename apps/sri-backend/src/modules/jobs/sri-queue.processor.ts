@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SriSoapClientService } from '../sri/sri-soap-client.service';
 import { SriComprobanteEstado, SriEnvironment, SriJobEstado } from '@pharmastock/shared';
+import { SriMailerService } from '../sri/sri-mailer.service';
+import { RideGeneratorService } from '../sri/ride-generator.service';
+import { parseXmlToRideData } from '../invoices/ride-xml-parser.util';
 
 export interface SriJobRecord {
   id: string;
@@ -33,6 +36,7 @@ export interface ISriComprobanteRepository {
       ultimoError?: string;
     }
   ): Promise<boolean>;
+  registrarLogEnvio?(id: string, log: Record<string, unknown>): Promise<boolean>;
 }
 
 @Injectable()
@@ -41,7 +45,9 @@ export class SriQueueProcessor {
 
   constructor(
     private readonly soapClient: SriSoapClientService,
-    private readonly repository: ISriComprobanteRepository
+    private readonly repository: ISriComprobanteRepository,
+    private readonly mailerService?: SriMailerService,
+    private readonly rideGenerator?: RideGeneratorService,
   ) {}
 
   /**
@@ -107,6 +113,56 @@ export class SriQueueProcessor {
       xmlFirmado: resAuth.xmlComprobante,
     });
     await this.repository.actualizarJob(job.id, 'EXITOSO', {});
+
+    // Disparo con confirmación y registro de entrega de RIDE y XML por correo
+    await this.dispararEnvioEmail(job, resAuth);
+  }
+
+  private async dispararEnvioEmail(
+    job: SriJobRecord,
+    resAuth: { numeroAutorizacion?: string; fechaAutorizacion?: string; xmlComprobante?: string },
+  ) {
+    if (!this.mailerService || !this.rideGenerator) {
+      return;
+    }
+
+    try {
+      const xml = resAuth.xmlComprobante || job.xmlFirmado;
+      if (!xml) return;
+
+      const emailMatch = xml.match(/<campoAdicional[^>]*nombre=["'](?:Email|email|Correo|correo)["'][^>]*>([^<]+)<\/campoAdicional>/i);
+      const email = emailMatch ? emailMatch[1].trim() : undefined;
+
+      if (!email || !email.includes('@')) {
+        this.logger.debug(`Comprobante ${job.claveAcceso} no tiene email de cliente registrado.`);
+        return;
+      }
+
+      const rideData = parseXmlToRideData(xml, resAuth.numeroAutorizacion, resAuth.fechaAutorizacion);
+      const pdfBuffer = await this.rideGenerator.generarRidePdf(rideData);
+
+      const resultado = await this.mailerService.enviarFacturaEmail({
+        destinatario: email,
+        numeroFactura: rideData.factura.secuencialCompleto,
+        razonSocialEmisor: rideData.emisor.razonSocial,
+        xmlContenido: xml,
+        pdfBuffer,
+      });
+
+      const logEnvio = {
+        tipo: 'ENVIO_AUTOMATICO_EMAIL',
+        destinatario: email,
+        enviado: resultado.enviado,
+        motivo: resultado.motivo,
+        timestamp: new Date().toISOString(),
+      };
+
+      if (this.repository.registrarLogEnvio) {
+        await this.repository.registrarLogEnvio(job.comprobanteId, logEnvio);
+      }
+    } catch (err: any) {
+      this.logger.error(`Error al disparar envío de email para comprobante ${job.claveAcceso}: ${err.message}`);
+    }
   }
 
   private async marcarNoAutorizado(job: SriJobRecord, mensajes: unknown[]) {

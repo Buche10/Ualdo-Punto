@@ -44,6 +44,16 @@ export class InvoicesController {
     return createSuccessResponse(estado);
   }
 
+  @Post(':claveAcceso/enviar-email')
+  @UseGuards(ApiKeyGuard)
+  public async enviarEmail(
+    @Param('claveAcceso') claveAcceso: string,
+    @Body() body: { email?: string },
+  ) {
+    const resultado = await this.invoicesService.enviarEmailFactura(claveAcceso, body?.email);
+    return createSuccessResponse(resultado);
+  }
+
   @Get(':claveAcceso/ride')
   public async descargarRide(
     @Param('claveAcceso') claveAcceso: string,

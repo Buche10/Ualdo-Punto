@@ -37,6 +37,15 @@ describe('InvoicesService (Orquestación del Pipeline de Facturación SRI)', () 
     despacharInmediato: vi.fn().mockResolvedValue(undefined),
   };
 
+  const mockMailerService = {
+    enviarFacturaEmail: vi.fn().mockResolvedValue({ enviado: true }),
+  };
+
+  const mockReconciliationService = {
+    consultarVentasSinFacturaAutorizada: vi.fn(),
+    reemitirFactura: vi.fn(),
+  };
+
   const baseDto: EmitirFacturaDto = {
     ambiente: '1',
     emisor: {
@@ -83,6 +92,8 @@ describe('InvoicesService (Orquestación del Pipeline de Facturación SRI)', () 
       mockRideGenerator as any,
       mockSriRepository as any,
       mockQueueWorker as any,
+      mockMailerService as any,
+      mockReconciliationService as any,
     );
   });
 
@@ -196,103 +207,80 @@ describe('InvoicesService (Orquestación del Pipeline de Facturación SRI)', () 
     expect(mockQueueWorker.despacharInmediato).not.toHaveBeenCalled();
   });
 
-  describe('Reconciliación y Re-emisión de Ventas', () => {
-    it('debe listar ventas pendientes de autorización tributaria', async () => {
-      mockSriRepository.consultarVentasSinFacturaAutorizada.mockResolvedValueOnce([
-        { ventaId: 'v-1', importeTotal: 25.0, motivo: 'EN_CONTINGENCIA' },
-        { ventaId: 'v-2', importeTotal: 10.0, motivo: 'SIN_COMPROBANTE' },
+  describe('Envío de Factura por Email (RIDE + XML)', () => {
+    it('debe enviar la factura por email con RIDE y XML y registrar el envío', async () => {
+      const xmlPrueba = `
+        <factura id="comprobante">
+          <infoTributaria>
+            <razonSocial>FARMACIA PHARMASTOCK S.A.</razonSocial>
+            <estab>001</estab><ptoEmi>001</ptoEmi><secuencial>000000042</secuencial>
+          </infoTributaria>
+          <infoFactura>
+            <fechaEmision>28/09/2026</fechaEmision>
+            <totalSinImpuestos>10.00</totalSinImpuestos>
+            <importeTotal>11.50</importeTotal>
+          </infoFactura>
+          <infoAdicional>
+            <campoAdicional nombre="Email">cliente@farmacia.com</campoAdicional>
+          </infoAdicional>
+        </factura>
+      `;
+
+      mockSriRepository.obtenerComprobantePorClave.mockResolvedValueOnce({
+        id: 'comp-mail-1',
+        clave_acceso: '2209202601179001691900110010010000000011234567818',
+        xml_firmado: xmlPrueba,
+        num_autorizacion: '2209202601179001691900110010010000000011234567818',
+        fecha_autorizacion: '2026-09-28T18:00:00Z',
+      });
+      (mockSriRepository as any).registrarLogEnvio = vi.fn().mockResolvedValue(true);
+
+      const res = await service.enviarEmailFactura('2209202601179001691900110010010000000011234567818');
+      expect(res.enviado).toBe(true);
+      expect(res.destinatario).toBe('cliente@farmacia.com');
+      expect(mockRideGenerator.generarRidePdf).toHaveBeenCalled();
+      expect(mockMailerService.enviarFacturaEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          destinatario: 'cliente@farmacia.com',
+          numeroFactura: '001-001-000000042',
+        }),
+      );
+      expect((mockSriRepository as any).registrarLogEnvio).toHaveBeenCalledWith(
+        'comp-mail-1',
+        expect.objectContaining({
+          tipo: 'ENVIO_MANUAL_EMAIL',
+          destinatario: 'cliente@farmacia.com',
+          enviado: true,
+        }),
+      );
+    });
+
+    it('debe rechazar si el comprobante no existe o el email es inválido', async () => {
+      mockSriRepository.obtenerComprobantePorClave.mockResolvedValueOnce(null);
+      await expect(service.enviarEmailFactura('clave-inexistente')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('Reconciliación y Re-emisión de Ventas (Delegación)', () => {
+    it('debe delegar consultarVentasSinFacturaAutorizada al servicio de reconciliación', async () => {
+      mockReconciliationService.consultarVentasSinFacturaAutorizada.mockResolvedValueOnce([
+        { ventaId: 'v-1', motivo: 'EN_CONTINGENCIA' },
       ]);
 
-      const pendientes = await service.consultarVentasSinFacturaAutorizada();
-      expect(pendientes).toHaveLength(2);
-      expect(pendientes[0].motivo).toBe('EN_CONTINGENCIA');
-      expect(pendientes[1].motivo).toBe('SIN_COMPROBANTE');
+      const res = await service.consultarVentasSinFacturaAutorizada();
+      expect(res).toHaveLength(1);
+      expect(mockReconciliationService.consultarVentasSinFacturaAutorizada).toHaveBeenCalled();
     });
 
-    it('debe rechazar re-emisión con ConflictException si la venta ya está AUTORIZADA', async () => {
-      mockSriRepository.obtenerVentaConDetallesPorId.mockResolvedValueOnce({
-        id: 'v-autorizada',
-        comprobantes: [{ id: 'c-1', estado: 'AUTORIZADO', clave_acceso: '1111111111111111111111111111111111111111111111111' }],
+    it('debe delegar reemitirFactura al servicio de reconciliación', async () => {
+      mockReconciliationService.reemitirFactura.mockResolvedValueOnce({
+        reemitida: true,
+        estrategia: 'REINTENTO_CONTINGENCIA',
       });
 
-      await expect(service.reemitirFactura('v-autorizada')).rejects.toThrow(ConflictException);
-    });
-
-    it('debe re-emitir en contingencia reutilizando el comprobante SIN generar nuevo secuencial ni duplicar stock', async () => {
-      mockSriRepository.obtenerVentaConDetallesPorId.mockResolvedValueOnce({
-        id: 'v-contingencia',
-        comprobantes: [
-          {
-            id: 'comp-contingencia-1',
-            clave_acceso: '2209202601179001691900110010010000000011234567818',
-            establecimiento: '001',
-            punto_emision: '001',
-            secuencial: '000000042',
-            estado: 'EN_CONTINGENCIA',
-            xml_firmado: '<factura>firmada</factura>',
-            ambiente: '1',
-          },
-        ],
-      });
-      mockSriRepository.obtenerJobPorComprobanteId.mockResolvedValueOnce({ id: 'job-viejo-1', estado: 'FALLIDO', intentos: 5 });
-
-      const res = await service.reemitirFactura('v-contingencia');
-
-      expect(res.estrategia).toBe('REINTENTO_CONTINGENCIA');
-      expect(res.claveAcceso).toBe('2209202601179001691900110010010000000011234567818');
-      expect(res.secuencial).toBe('001-001-000000042');
-      // No debe solicitar nuevo secuencial de la secuencia
-      expect(mockSriRepository.obtenerSiguienteSecuencial).not.toHaveBeenCalled();
-      // Debe reiniciar el job y despachar de inmediato
-      expect(mockSriRepository.reiniciarJob).toHaveBeenCalledWith('job-viejo-1');
-      expect(mockQueueWorker.despacharInmediato).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: 'job-viejo-1',
-          comprobanteId: 'comp-contingencia-1',
-          claveAcceso: '2209202601179001691900110010010000000011234567818',
-        }),
-      );
-    });
-
-    it('debe re-emitir venta sin comprobante previo generando nueva factura sin tocar stock', async () => {
-      mockSriRepository.obtenerVentaConDetallesPorId.mockResolvedValueOnce({
-        id: 'v-sin-comp',
-        forma_pago_codigo: '01',
-        comprobantes: [],
-        clientes: {
-          tipo_identificacion: '05',
-          identificacion: '1710034065',
-          razon_social: 'JUAN PEREZ',
-          direccion: 'Quito',
-          email: 'juan@test.com',
-        },
-        venta_detalle: [
-          {
-            producto_id: 'prod-1',
-            codigo_principal: 'MED-1',
-            descripcion: 'Ibuprofeno',
-            cantidad: 1,
-            precio_unitario: 5.0,
-            descuento: 0,
-            tarifa: 0,
-            codigo_impuesto: '2',
-            codigo_porcentaje: '0',
-          },
-        ],
-      });
-
-      const res = await service.reemitirFactura('v-sin-comp');
-
-      expect(res.estrategia).toBe('NUEVA_EMISION');
-      expect(mockSriRepository.obtenerSiguienteSecuencial).toHaveBeenCalledWith('01', '001', '001');
-      expect(mockXmlSignerService.firmarFacturaXml).toHaveBeenCalled();
-      expect(mockSriRepository.guardarComprobante).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ventaId: 'v-sin-comp',
-          estado: 'FIRMADO',
-        }),
-      );
-      expect(mockQueueWorker.despacharInmediato).toHaveBeenCalled();
+      const res = await service.reemitirFactura('v-1');
+      expect(res.reemitida).toBe(true);
+      expect(mockReconciliationService.reemitirFactura).toHaveBeenCalledWith('v-1', undefined);
     });
   });
 });

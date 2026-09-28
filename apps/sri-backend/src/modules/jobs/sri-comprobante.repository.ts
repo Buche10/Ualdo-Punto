@@ -318,4 +318,25 @@ export class SriComprobanteRepository implements ISriComprobanteRepository {
     const { data } = await client.from('emisor').select('*').limit(1).maybeSingle();
     return data || null;
   }
+
+  public async registrarLogEnvio(comprobanteId: string, logEnvio: Record<string, unknown>): Promise<boolean> {
+    const client = this.supabaseService.getClientOrThrow();
+    const { data } = await client.from('comprobantes').select('mensajes_sri').eq('id', comprobanteId).maybeSingle();
+    const mensajesPrevios = Array.isArray(data?.mensajes_sri) ? data.mensajes_sri : [];
+    mensajesPrevios.push(logEnvio);
+
+    const { error } = await client
+      .from('comprobantes')
+      .update({
+        mensajes_sri: mensajesPrevios,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', comprobanteId);
+
+    if (error) {
+      this.logger.warn(`No se pudo registrar log de envío para comprobante ${comprobanteId}: ${error.message}`);
+      return false;
+    }
+    return true;
+  }
 }

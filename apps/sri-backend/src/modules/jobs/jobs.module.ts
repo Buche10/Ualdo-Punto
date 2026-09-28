@@ -5,6 +5,8 @@ import { SriQueueProcessor } from './sri-queue.processor';
 import { SriComprobanteRepository } from './sri-comprobante.repository';
 import { SriQueueWorker } from './sri-queue.worker';
 import { SriSoapClientService } from '../sri/sri-soap-client.service';
+import { SriMailerService } from '../sri/sri-mailer.service';
+import { RideGeneratorService } from '../sri/ride-generator.service';
 
 @Module({
   imports: [SriModule, DatabaseModule],
@@ -12,10 +14,15 @@ import { SriSoapClientService } from '../sri/sri-soap-client.service';
     SriComprobanteRepository,
     {
       provide: SriQueueProcessor,
-      useFactory: (soapClient: SriSoapClientService, repo: SriComprobanteRepository) => {
-        return new SriQueueProcessor(soapClient, repo);
+      useFactory: (
+        soapClient: SriSoapClientService,
+        repo: SriComprobanteRepository,
+        mailer: SriMailerService,
+        rideGen: RideGeneratorService,
+      ) => {
+        return new SriQueueProcessor(soapClient, repo, mailer, rideGen);
       },
-      inject: [SriSoapClientService, SriComprobanteRepository],
+      inject: [SriSoapClientService, SriComprobanteRepository, SriMailerService, RideGeneratorService],
     },
     SriQueueWorker,
   ],
