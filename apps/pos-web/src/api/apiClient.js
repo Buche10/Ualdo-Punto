@@ -1,10 +1,10 @@
 const getBaseUrl = () => {
-  const envUrl = typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL;
+  const envUrl = typeof import.meta !== 'undefined' && (import.meta.env?.VITE_API_URL || import.meta.env?.VITE_BACKEND_URL);
   return envUrl || 'http://localhost:3001/api';
 };
 
 const getApiKey = () => {
-  const envKey = typeof import.meta !== 'undefined' && import.meta.env?.VITE_POS_API_KEY;
+  const envKey = typeof import.meta !== 'undefined' && (import.meta.env?.VITE_API_KEY || import.meta.env?.VITE_POS_API_KEY);
   return envKey || 'pharmastock-pos-secure-key-2026';
 };
 

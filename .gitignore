@@ -40,3 +40,10 @@ certificates/
 *.njsproj
 *.sln
 *.sw?
+
+# Task inbox
+tasks/logs/
+
+# Playwright
+test-results/
+playwright-report/

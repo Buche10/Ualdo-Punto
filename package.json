@@ -12,9 +12,12 @@
     "build:pos": "npm run build --workspace=@pharmastock/pos-web",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "certificacion": "tsx scripts/certificacion.ts"
+    "certificacion": "tsx scripts/certificacion.ts",
+    "seed:emisor": "tsx scripts/seed-emisor.ts",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "libxml2-wasm": "^0.7.2",
     "tsx": "^4.23.15"
   }
