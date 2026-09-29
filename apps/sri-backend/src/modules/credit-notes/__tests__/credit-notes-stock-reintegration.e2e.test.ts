@@ -127,7 +127,7 @@ describe('A1 & A2: Reintegro de stock por producto_id real al AUTORIZAR (Idempot
       mockAccessKeyService as any,
       mockXmlBuilderService as any,
       mockXmlSignerService as any,
-      repository,
+      repository as any,
       mockQueueWorker as any,
       mockSupabaseService as any,
     );

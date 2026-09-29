@@ -138,6 +138,51 @@ Para plataformas como Render, Railway o Fly.io que gestionan secretos mediante v
 
 ---
 
+### Opción E: Despliegue en Hetzner con Coolify (Recomendado para el ecosistema Ualdo)
+
+1. **Crear recurso en Coolify:**
+   - En el dashboard de Coolify (Hetzner), diríjase a su proyecto / ambiente.
+   - Haga clic en **+ New Resource** → **Public/Private Repository** (GitHub o GitLab).
+   - Indique la URL del repositorio y la rama (ej. `main` o `fix/sri-invoicing-hardening`).
+2. **Configuración de Build:**
+   - **Build Pack:** `Dockerfile`
+   - **Base Directory:** `/`
+   - **Dockerfile Path:** `/Dockerfile`
+   - **Exposed Port:** `3001`
+3. **Dominio y Certificados SSL/TLS:**
+   - En **Domains**, configure el subdominio con HTTPS:
+     `https://api-sri.tu-dominio.com` (Traefik gestiona Let's Encrypt automáticamente).
+4. **Health Check:**
+   - **Healthcheck Path:** `/api/health`
+   - **Interval:** `30`
+   - **Timeout:** `5`
+   - **Start Period:** `10`
+5. **Variables de Entorno y Secretos en Coolify:**
+   Cargue las siguientes variables en la pestaña **Environment Variables**:
+   ```env
+   PORT=3001
+   SRI_AMBIENTE=1
+   SRI_REQUIRE_DB=true
+   SRI_RUC_EMISOR=1790016919001
+   SRI_P12_BASE64=<su_certificado_p12_en_base64>
+   SRI_P12_PASSWORD=<clave_del_certificado>
+   SUPABASE_URL=https://<su-proyecto>.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=<service_role_key>
+   POS_API_KEY=<su_clave_api_pos>
+   FRONTEND_URL=https://<su-pos-en-netlify-o-coolify>
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USER=<correo_emisor>
+   SMTP_PASS=<clave_aplicacion_smtp>
+   SMTP_FROM=<correo_emisor>
+   SRI_QUEUE_INTERVAL_SEC=5
+   ```
+6. **Despliegue y Webhooks:**
+   - Haga clic en **Deploy**.
+   - Active **Auto Deploy** para que cada `git push` a la rama despliegue la nueva versión con cero caída (zero-downtime rolling update).
+
+---
+
 ## 4. Configuración en Netlify (Frontend POS)
 
 Una vez que el backend esté en línea y accesible vía HTTPS:
