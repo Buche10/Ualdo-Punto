@@ -8,7 +8,7 @@ const CONSUMIDOR_FINAL = {
   identificacion: '9999999999999',
   razonSocial: 'CONSUMIDOR FINAL',
   direccion: 'N/A',
-  email: 'consumidorfinal@pharmastock.ec',
+  email: 'consumidorfinal@ualdocorp.com',
 };
 
 export const CustomerSelector = ({ cliente, onSelectCliente, isDarkMode }) => {
@@ -57,19 +57,19 @@ export const CustomerSelector = ({ cliente, onSelectCliente, isDarkMode }) => {
   const isCF = cliente?.identificacion === '9999999999999';
 
   return (
-    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'} shadow-sm space-y-3`}>
+    <div className={`p-4 rounded-3xl border ${isDarkMode ? 'bg-[var(--surface)] border-[var(--border)]' : 'bg-white border-[var(--border)]'} shadow-sm space-y-3`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <User className="w-5 h-5 text-emerald-500" />
-          <h3 className="font-bold text-sm">Datos del Cliente</h3>
+          <User className="w-5 h-5 text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)]" />
+          <h3 className="font-bold text-sm text-[var(--text)]">Datos del Cliente</h3>
         </div>
         <button
           type="button"
           onClick={handleSelectConsumidorFinal}
-          className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+          className={`btn-pill-secondary px-3 py-1 text-xs ${
             isCF
-              ? 'bg-emerald-500 text-white shadow'
-              : isDarkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              ? 'bg-[var(--ualdo-petroleo)] text-white dark:bg-[var(--ualdo-aqua)] dark:text-[var(--ualdo-negro)]'
+              : ''
           }`}
         >
           Consumidor Final
@@ -79,14 +79,14 @@ export const CustomerSelector = ({ cliente, onSelectCliente, isDarkMode }) => {
       {!isCreating ? (
         <div className="space-y-2">
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-3 text-[var(--text-muted)]" />
             <input
               type="text"
               placeholder="Buscar por Cédula o RUC..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-9 pr-24 py-2 text-xs rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${
-                isDarkMode ? 'bg-slate-800/80 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+              className={`w-full pl-9 pr-24 py-2 text-xs rounded-full border focus:outline-none focus:ring-2 focus:ring-[var(--ualdo-aqua)] transition-all ${
+                isDarkMode ? 'bg-[var(--surface-muted)] border-[var(--border)] text-white' : 'bg-[var(--surface-muted)] border-[var(--border)] text-[var(--text)]'
               }`}
             />
             <button
@@ -95,24 +95,24 @@ export const CustomerSelector = ({ cliente, onSelectCliente, isDarkMode }) => {
                 setIsCreating(true);
                 setFormData((prev) => ({ ...prev, identificacion: searchTerm }));
               }}
-              className="absolute right-2 top-1.5 px-2 py-1 text-[11px] font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1"
+              className="absolute right-2 top-1.5 px-2 py-1 text-[11px] font-bold text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)] hover:underline flex items-center gap-1"
             >
               <PlusCircle className="w-3.5 h-3.5" /> Nuevo
             </button>
           </div>
 
-          {loading && <p className="text-[11px] text-slate-400 animate-pulse">Buscando cliente...</p>}
+          {loading && <p className="text-[11px] text-[var(--text-muted)] animate-pulse">Buscando cliente...</p>}
           {error && <p className="text-[11px] text-rose-400">{error}</p>}
 
           {cliente && (
-            <div className={`p-2.5 rounded-xl border flex items-center justify-between text-xs ${
-              isDarkMode ? 'bg-slate-800/40 border-slate-700' : 'bg-emerald-50/50 border-emerald-200'
+            <div className={`p-2.5 rounded-2xl border flex items-center justify-between text-xs ${
+              isDarkMode ? 'bg-[var(--surface-muted)] border-[var(--border)]' : 'bg-[var(--surface-muted)] border-[var(--border)]'
             }`}>
               <div>
-                <p className="font-bold flex items-center gap-1.5 text-emerald-500">
+                <p className="font-bold flex items-center gap-1.5 text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)]">
                   <CheckCircle className="w-3.5 h-3.5" /> {cliente.razonSocial}
                 </p>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-[var(--text-muted)]">
                   {cliente.tipoIdentificacion === '04' ? 'RUC' : cliente.tipoIdentificacion === '05' ? 'Cédula' : 'ID'}: {cliente.identificacion}
                   {cliente.email ? ` • ${cliente.email}` : ''}
                 </p>
@@ -124,12 +124,12 @@ export const CustomerSelector = ({ cliente, onSelectCliente, isDarkMode }) => {
         <form onSubmit={handleSaveNewClient} className="space-y-2 text-xs">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[10px] font-bold text-slate-400">Tipo ID</label>
+              <label className="text-[10px] font-bold text-[var(--text-muted)]">Tipo ID</label>
               <select
                 value={formData.tipoIdentificacion}
                 onChange={(e) => setFormData({ ...formData, tipoIdentificacion: e.target.value })}
-                className={`w-full p-1.5 rounded-lg border text-xs ${
-                  isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                className={`w-full p-1.5 rounded-xl border text-xs ${
+                  isDarkMode ? 'bg-[var(--surface-muted)] border-[var(--border)] text-white' : 'bg-[var(--surface-muted)] border-[var(--border)] text-[var(--text)]'
                 }`}
               >
                 <option value="05">Cédula</option>
@@ -138,50 +138,50 @@ export const CustomerSelector = ({ cliente, onSelectCliente, isDarkMode }) => {
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-bold text-slate-400">Identificación</label>
+              <label className="text-[10px] font-bold text-[var(--text-muted)]">Identificación</label>
               <input
                 type="text"
                 required
                 value={formData.identificacion}
                 onChange={(e) => setFormData({ ...formData, identificacion: e.target.value })}
-                className={`w-full p-1.5 rounded-lg border text-xs ${
-                  isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                className={`w-full p-1.5 rounded-xl border text-xs ${
+                  isDarkMode ? 'bg-[var(--surface-muted)] border-[var(--border)] text-white' : 'bg-[var(--surface-muted)] border-[var(--border)] text-[var(--text)]'
                 }`}
               />
             </div>
           </div>
           <div>
-            <label className="text-[10px] font-bold text-slate-400">Razón Social / Nombre</label>
+            <label className="text-[10px] font-bold text-[var(--text-muted)]">Razón Social / Nombre</label>
             <input
               type="text"
               required
               value={formData.razonSocial}
               onChange={(e) => setFormData({ ...formData, razonSocial: e.target.value })}
-              className={`w-full p-1.5 rounded-lg border text-xs ${
-                isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+              className={`w-full p-1.5 rounded-xl border text-xs ${
+                isDarkMode ? 'bg-[var(--surface-muted)] border-[var(--border)] text-white' : 'bg-[var(--surface-muted)] border-[var(--border)] text-[var(--text)]'
               }`}
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[10px] font-bold text-slate-400">Email</label>
+              <label className="text-[10px] font-bold text-[var(--text-muted)]">Email</label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className={`w-full p-1.5 rounded-lg border text-xs ${
-                  isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                className={`w-full p-1.5 rounded-xl border text-xs ${
+                  isDarkMode ? 'bg-[var(--surface-muted)] border-[var(--border)] text-white' : 'bg-[var(--surface-muted)] border-[var(--border)] text-[var(--text)]'
                 }`}
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-slate-400">Dirección</label>
+              <label className="text-[10px] font-bold text-[var(--text-muted)]">Dirección</label>
               <input
                 type="text"
                 value={formData.direccion}
                 onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                className={`w-full p-1.5 rounded-lg border text-xs ${
-                  isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300'
+                className={`w-full p-1.5 rounded-xl border text-xs ${
+                  isDarkMode ? 'bg-[var(--surface-muted)] border-[var(--border)] text-white' : 'bg-[var(--surface-muted)] border-[var(--border)] text-[var(--text)]'
                 }`}
               />
             </div>
@@ -190,14 +190,14 @@ export const CustomerSelector = ({ cliente, onSelectCliente, isDarkMode }) => {
             <button
               type="button"
               onClick={() => setIsCreating(false)}
-              className="px-3 py-1 text-slate-400 hover:text-white"
+              className="px-3 py-1 text-[var(--text-muted)] hover:text-[var(--text)]"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-3 py-1 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-500 shadow"
+              className="btn-pill-primary px-4 py-1.5 text-xs"
             >
               {loading ? 'Guardando...' : 'Guardar y Usar'}
             </button>

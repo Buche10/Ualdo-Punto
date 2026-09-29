@@ -297,19 +297,26 @@ export function App() {
   };
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} font-sans flex flex-col transition-colors duration-200`}>
+    <div className={`min-h-screen ${isDarkMode ? 'bg-[var(--bg)] text-white' : 'bg-[var(--bg)] text-[var(--text)]'} font-sans flex flex-col transition-colors duration-200`}>
       
       {/* Header Superior Adaptativo */}
-      <header className={`${isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200 shadow-sm'} sticky top-0 z-40 backdrop-blur-md border-b px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-lg transition-colors`}>
+      <header className={`${isDarkMode ? 'bg-[var(--surface)]/95 border-[var(--border)]' : 'bg-white/95 border-[var(--border)] shadow-sm'} sticky top-0 z-40 backdrop-blur-md border-b px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-lg transition-colors`}>
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-tr from-emerald-600 to-teal-400 rounded-xl text-white shadow-lg shadow-emerald-950/40">
-            <Pill className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className={`font-black text-lg sm:text-xl tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'} flex items-center gap-2`}>
-              PharmaStock <span className="text-emerald-500 text-xs font-semibold px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 rounded-full">Express</span>
+          <img
+            src={isDarkMode ? "/ualdo-logo-horizontal-fondo-oscuro.png" : "/ualdo-logo-horizontal-fondo-claro.png"}
+            alt="Ualdo Negocios"
+            className="h-8 sm:h-9 w-auto object-contain"
+            width="140"
+            height="36"
+          />
+          <div className="border-l border-[var(--border)] pl-3">
+            <h1 className="font-bold text-sm sm:text-base tracking-tight text-[var(--text)] flex items-center gap-2">
+              Ualdo Negocios
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--ualdo-petroleo)]/15 text-[var(--ualdo-petroleo)] dark:bg-[var(--ualdo-aqua)]/15 dark:text-[var(--ualdo-aqua)] border border-[var(--ualdo-aqua)]/30">
+                POS
+              </span>
             </h1>
-            <p className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'} hidden sm:block`}>Sistema de Inventario para Farmacia y Control de Lotes</p>
+            <p className="text-[11px] text-[var(--text-muted)] hidden sm:block">Punto de Venta y Control de Inventarios</p>
           </div>
         </div>
 
@@ -324,15 +331,15 @@ export function App() {
               : cloudStatus === 'error' ? 'Sin conexión a la nube: trabajando con datos locales'
               : 'Modo local (sin sincronización configurada)'
             }
-            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border ${
-              cloudStatus === 'online' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border ${
+              cloudStatus === 'online' ? 'bg-[var(--ualdo-aqua)]/15 text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)] border-[var(--ualdo-aqua)]/40'
               : cloudStatus === 'connecting' ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
               : cloudStatus === 'error' ? 'bg-rose-500/10 text-rose-500 border-rose-500/30'
-              : isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-200 text-slate-500 border-slate-300'
+              : 'bg-[var(--surface-muted)] text-[var(--text-muted)] border-[var(--border)]'
             }`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${
-              cloudStatus === 'online' ? 'bg-emerald-500 animate-pulse'
+              cloudStatus === 'online' ? 'bg-[var(--ualdo-aqua)] animate-pulse'
               : cloudStatus === 'connecting' ? 'bg-amber-500 animate-pulse'
               : cloudStatus === 'error' ? 'bg-rose-500'
               : 'bg-slate-400'
@@ -346,21 +353,17 @@ export function App() {
           <button
             onClick={handleExportJSON}
             title="Exportar inventario en JSON (para otro dispositivo)"
-            className={`p-2 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors ${
-              isDarkMode ? 'bg-slate-800 text-slate-200 hover:bg-slate-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-            }`}
+            className="btn-pill-secondary text-xs px-3 py-1.5"
           >
-            <Download className="w-4 h-4 text-emerald-500" />
+            <Download className="w-4 h-4 text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)]" />
             <span className="hidden md:inline">Exportar JSON</span>
           </button>
 
           <label
             title="Importar inventario desde JSON"
-            className={`p-2 text-xs font-semibold rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors ${
-              isDarkMode ? 'bg-slate-800 text-slate-200 hover:bg-slate-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-            }`}
+            className="btn-pill-secondary text-xs px-3 py-1.5 cursor-pointer"
           >
-            <Upload className="w-4 h-4 text-emerald-500" />
+            <Upload className="w-4 h-4 text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)]" />
             <span className="hidden md:inline">Importar</span>
             <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
           </label>
@@ -368,9 +371,7 @@ export function App() {
           <button
             onClick={handleResetData}
             title="Reiniciar a catálogo de prueba"
-            className={`p-2 text-xs rounded-xl flex items-center gap-1 transition-colors ${
-              isDarkMode ? 'bg-slate-800/80 text-slate-400 hover:text-white' : 'bg-slate-200 text-slate-600 hover:text-slate-900'
-            }`}
+            className="btn-pill-secondary text-xs px-3 py-1.5"
           >
             <RotateCcw className="w-4 h-4 text-amber-500" />
             <span className="hidden md:inline">Reiniciar</span>
@@ -380,11 +381,9 @@ export function App() {
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
             title={isDarkMode ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
-            className={`p-2 rounded-xl transition-colors ${
-              isDarkMode ? 'bg-slate-800 text-amber-400 hover:bg-slate-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-            }`}
+            className="rounded-full p-2 border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
           >
-            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5 text-indigo-600" />}
+            {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-[var(--ualdo-petroleo)]" />}
           </button>
         </div>
       </header>
@@ -393,77 +392,77 @@ export function App() {
       <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         <aside className="hidden lg:block lg:col-span-3 space-y-2 sticky top-24 h-fit">
-          <div className={`${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md'} border rounded-2xl p-3 shadow-xl space-y-1`}>
-            <div className="px-3 py-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+          <div className={`${isDarkMode ? 'bg-[var(--surface)] border-[var(--border)]' : 'bg-white border-[var(--border)] shadow-md'} border rounded-3xl p-3 shadow-xl space-y-1`}>
+            <div className="px-3 py-2 text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
               Navegación Principal
             </div>
 
             <button
               onClick={() => setActiveTab('sales')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm transition-all ${
                 activeTab === 'sales'
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/40'
-                  : isDarkMode ? 'text-slate-400 hover:bg-slate-800/60 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'bg-[var(--ualdo-petroleo)] text-white shadow-lg shadow-[var(--ualdo-petroleo)]/30'
+                  : 'text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'
               }`}
             >
-              <ReceiptText className="w-5 h-5 text-emerald-400" />
+              <ReceiptText className={`w-5 h-5 ${activeTab === 'sales' ? 'text-[var(--ualdo-aqua)]' : 'text-[var(--ualdo-turquesa)]'}`} />
               <span>Facturar (POS SRI)</span>
             </button>
 
             <button
               onClick={() => setActiveTab('quick-count')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm transition-all ${
                 activeTab === 'quick-count'
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/40'
-                  : isDarkMode ? 'text-slate-400 hover:bg-slate-800/60 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'bg-[var(--ualdo-petroleo)] text-white shadow-lg shadow-[var(--ualdo-petroleo)]/30'
+                  : 'text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'
               }`}
             >
-              <Camera className="w-5 h-5 text-emerald-400" />
+              <Camera className={`w-5 h-5 ${activeTab === 'quick-count' ? 'text-[var(--ualdo-aqua)]' : 'text-[var(--ualdo-turquesa)]'}`} />
               <span>Conteo con Celular</span>
             </button>
 
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm transition-all ${
                 activeTab === 'dashboard'
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/40'
-                  : isDarkMode ? 'text-slate-400 hover:bg-slate-800/60 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'bg-[var(--ualdo-petroleo)] text-white shadow-lg shadow-[var(--ualdo-petroleo)]/30'
+                  : 'text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'
               }`}
             >
-              <Package className="w-5 h-5 text-emerald-400" />
+              <Package className={`w-5 h-5 ${activeTab === 'dashboard' ? 'text-[var(--ualdo-aqua)]' : 'text-[var(--ualdo-turquesa)]'}`} />
               <span>Stock en Tiempo Real</span>
             </button>
 
             <button
               onClick={() => setActiveTab('audit')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm transition-all ${
                 activeTab === 'audit'
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/40'
-                  : isDarkMode ? 'text-slate-400 hover:bg-slate-800/60 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'bg-[var(--ualdo-petroleo)] text-white shadow-lg shadow-[var(--ualdo-petroleo)]/30'
+                  : 'text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'
               }`}
             >
-              <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+              <FileSpreadsheet className={`w-5 h-5 ${activeTab === 'audit' ? 'text-[var(--ualdo-aqua)]' : 'text-[var(--ualdo-turquesa)]'}`} />
               <span>Reporte Auditoría</span>
             </button>
 
             <button
               onClick={() => setActiveTab('batches')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm transition-all ${
                 activeTab === 'batches'
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/40'
-                  : isDarkMode ? 'text-slate-400 hover:bg-slate-800/60 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'bg-[var(--ualdo-petroleo)] text-white shadow-lg shadow-[var(--ualdo-petroleo)]/30'
+                  : 'text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'
               }`}
             >
-              <Calendar className="w-5 h-5 text-emerald-400" />
+              <Calendar className={`w-5 h-5 ${activeTab === 'batches' ? 'text-[var(--ualdo-aqua)]' : 'text-[var(--ualdo-turquesa)]'}`} />
               <span>Lotes y Vencimientos</span>
             </button>
           </div>
 
-          <div className={`${isDarkMode ? 'bg-slate-900/80 border-emerald-500/20' : 'bg-emerald-50/80 border-emerald-200'} border rounded-2xl p-4 text-xs space-y-2`}>
-            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
+          <div className={`${isDarkMode ? 'bg-[var(--surface-muted)] border-[var(--ualdo-aqua)]/20' : 'bg-[var(--surface-muted)] border-[var(--border)]'} border rounded-3xl p-4 text-xs space-y-2`}>
+            <div className="flex items-center gap-2 text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)] font-bold">
               <Smartphone className="w-4 h-4" /> Escáner Móvil HTTPS
             </div>
-            <p className={`${isDarkMode ? 'text-slate-400' : 'text-slate-600'} leading-relaxed`}>
+            <p className="text-[var(--text-muted)] leading-relaxed">
               Compatible con la cámara de cualquier teléfono. Los conteos se persisten y puedes exportar la sesión en JSON para consolidar inventarios.
             </p>
           </div>
@@ -524,12 +523,12 @@ export function App() {
 
       {/* Menú Móvil Inferior */}
       <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 ${
-        isDarkMode ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200 shadow-xl'
+        isDarkMode ? 'bg-[var(--surface)]/95 border-[var(--border)]' : 'bg-white/95 border-[var(--border)] shadow-xl'
       } backdrop-blur-lg border-t px-2 py-2 flex items-center justify-around`}>
         <button
           onClick={() => setActiveTab('sales')}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs font-semibold transition-colors ${
-            activeTab === 'sales' ? 'text-emerald-500' : isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            activeTab === 'sales' ? 'text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
           }`}
         >
           <ReceiptText className="w-5 h-5" />
@@ -539,7 +538,7 @@ export function App() {
         <button
           onClick={() => setActiveTab('quick-count')}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs font-semibold transition-colors ${
-            activeTab === 'quick-count' ? 'text-emerald-500' : isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            activeTab === 'quick-count' ? 'text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
           }`}
         >
           <Camera className="w-5 h-5" />
@@ -549,7 +548,7 @@ export function App() {
         <button
           onClick={() => setActiveTab('dashboard')}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs font-semibold transition-colors ${
-            activeTab === 'dashboard' ? 'text-emerald-500' : isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            activeTab === 'dashboard' ? 'text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
           }`}
         >
           <Package className="w-5 h-5" />
@@ -559,7 +558,7 @@ export function App() {
         <button
           onClick={() => setActiveTab('audit')}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs font-semibold transition-colors ${
-            activeTab === 'audit' ? 'text-emerald-500' : isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            activeTab === 'audit' ? 'text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
           }`}
         >
           <FileSpreadsheet className="w-5 h-5" />
@@ -569,7 +568,7 @@ export function App() {
         <button
           onClick={() => setActiveTab('batches')}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl text-xs font-semibold transition-colors ${
-            activeTab === 'batches' ? 'text-emerald-500' : isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            activeTab === 'batches' ? 'text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
           }`}
         >
           <Calendar className="w-5 h-5" />

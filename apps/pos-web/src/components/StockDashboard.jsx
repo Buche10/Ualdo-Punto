@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Package, AlertTriangle, DollarSign, Search, Plus, Edit2, CheckCircle2, ShieldAlert, FileText, ArrowUpDown, Tag, MapPin, Box, Pill, Trash2 } from 'lucide-react';
+import { AlertTriangle, DollarSign, Search, Plus, Edit2, CheckCircle2, ShieldAlert, Trash2 } from 'lucide-react';
 import { formatStockText } from '../data/mockPharmacyCatalog';
 
-export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct, onDeleteProduct, isDarkMode }) => {
+export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct, onDeleteProduct, _isDarkMode }) => {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
@@ -98,21 +98,21 @@ export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct,
     setEditingProduct(null);
   };
 
-  const cardBg = isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md';
-  const innerBg = isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-300';
-  const textTitle = isDarkMode ? 'text-white' : 'text-slate-900';
-  const textSub = isDarkMode ? 'text-slate-400' : 'text-slate-600';
+  const cardBg = 'bg-[var(--surface)] border-[var(--border)] shadow-sm';
+  const innerBg = 'bg-[var(--surface-muted)] border-[var(--border)]';
+  const textTitle = 'text-[var(--text)]';
+  const textSub = 'text-[var(--text-muted)]';
 
   return (
-    <div className="space-y-6 pb-12 animate-fade-in">
+    <div className="space-y-6 pb-12 animate-fade-in text-left">
       
       {/* Tarjetas KPI */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        <div className={`${cardBg} border rounded-2xl p-5 shadow-xl`}>
+        <div className={`${cardBg} border rounded-2xl p-5 shadow-sm`}>
           <div className="flex items-center justify-between">
             <span className={`text-xs font-bold ${textSub} uppercase tracking-wider`}>Avance del Conteo</span>
-            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+            <CheckCircle2 className="w-5 h-5 text-ualdo-petroleo dark:text-ualdo-aqua" />
           </div>
           <div className="mt-3 flex items-baseline justify-between">
             <div className={`text-3xl font-black ${textTitle}`}>{countProgressPercent}%</div>
@@ -120,19 +120,19 @@ export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct,
           </div>
           <div className={`w-full ${innerBg} rounded-full h-2 mt-3 overflow-hidden border`}>
             <div 
-              className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full transition-all duration-500 rounded-full"
+              className="bg-gradient-to-r from-ualdo-petroleo to-ualdo-turquesa h-full transition-all duration-500 rounded-full"
               style={{ width: `${countProgressPercent}%` }}
             />
           </div>
         </div>
 
-        <div className={`${cardBg} border rounded-2xl p-5 shadow-xl`}>
+        <div className={`${cardBg} border rounded-2xl p-5 shadow-sm`}>
           <div className="flex items-center justify-between">
             <span className={`text-xs font-bold ${textSub} uppercase tracking-wider`}>Valoración Inventario</span>
-            <DollarSign className="w-5 h-5 text-emerald-500" />
+            <DollarSign className="w-5 h-5 text-ualdo-petroleo dark:text-ualdo-aqua" />
           </div>
           <div className="mt-3">
-            <div className="text-2xl font-black text-emerald-500">
+            <div className="text-2xl font-black text-ualdo-petroleo dark:text-ualdo-aqua">
               ${totalInventoryValueCost.toLocaleString()} <span className={`text-xs font-normal ${textSub}`}>(Costo)</span>
             </div>
             <div className={`text-xs ${textSub} mt-1`}>
@@ -166,15 +166,15 @@ export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct,
       </div>
 
       {/* Controles */}
-      <div className={`${cardBg} border rounded-2xl p-5 shadow-xl flex flex-col lg:flex-row items-center justify-between gap-4`}>
+      <div className={`${cardBg} border rounded-2xl p-5 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-4`}>
         <div className="relative w-full lg:w-96">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Buscar por medicamento, EAN, principio activo..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className={`w-full ${innerBg} ${textTitle} text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-500 placeholder:text-slate-400`}
+            className={`w-full ${innerBg} ${textTitle} text-sm rounded-full pl-10 pr-4 py-2.5 focus:outline-none focus:border-ualdo-turquesa focus:ring-1 focus:ring-ualdo-turquesa placeholder:text-[var(--text-muted)]`}
           />
         </div>
 
@@ -182,7 +182,7 @@ export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct,
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className={`${innerBg} ${textTitle} text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-emerald-500`}
+            className={`${innerBg} ${textTitle} text-xs rounded-full px-4 py-2.5 focus:outline-none focus:border-ualdo-turquesa`}
           >
             <option value="ALL">Todas las Categorías</option>
             {categories.filter(c => c !== 'ALL').map(c => (
@@ -192,7 +192,7 @@ export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct,
 
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-emerald-950/30 flex items-center gap-2 transition-colors ml-auto lg:ml-0"
+            className="btn-pill-primary text-xs flex items-center gap-2 ml-auto lg:ml-0"
           >
             <Plus className="w-4 h-4" /> Nuevo Producto
           </button>
@@ -200,10 +200,10 @@ export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct,
       </div>
 
       {/* Tabla de Productos */}
-      <div className={`${cardBg} border rounded-2xl shadow-xl overflow-hidden`}>
+      <div className={`${cardBg} border rounded-2xl shadow-sm overflow-hidden`}>
         <div className="overflow-x-auto">
           <table className={`w-full text-left text-sm ${textSub}`}>
-            <thead className={`${innerBg} border-b text-slate-400 uppercase text-[11px] font-bold tracking-wider`}>
+            <thead className={`${innerBg} border-b text-[var(--text-muted)] uppercase text-[11px] font-bold tracking-wider`}>
               <tr>
                 <th className="px-5 py-3.5">Medicamento</th>
                 <th className="px-4 py-3.5">Código EAN-13</th>
@@ -215,10 +215,10 @@ export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct,
                 <th className="px-4 py-3.5 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700/40">
+            <tbody className="divide-y divide-[var(--border)]">
               {filteredProducts.length > 0 ? (
                 filteredProducts.map(prod => (
-                  <tr key={prod.id} className="hover:bg-emerald-500/5 transition-colors">
+                  <tr key={prod.id} className="hover:bg-ualdo-petroleo/5 transition-colors">
                     
                     <td className="px-5 py-4">
                       <div className={`font-bold ${textTitle} text-base`}>{prod.name}</div>
@@ -226,7 +226,7 @@ export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct,
                     </td>
 
                     <td className="px-4 py-4">
-                      <span className="font-mono text-xs text-emerald-500 bg-emerald-500/10 border border-emerald-500/30 px-2 py-1 rounded">
+                      <span className="font-mono text-xs text-ualdo-petroleo dark:text-ualdo-aqua bg-ualdo-petroleo/10 border border-ualdo-petroleo/20 px-2 py-1 rounded">
                         {prod.barcode}
                       </span>
                     </td>
@@ -237,11 +237,11 @@ export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct,
                       </span>
                     </td>
 
-                    <td className="px-4 py-4 text-right font-bold text-emerald-500">
+                    <td className="px-4 py-4 text-right font-bold text-ualdo-petroleo dark:text-ualdo-aqua">
                       ${(prod.boxPrice || 0).toLocaleString()}
                     </td>
 
-                    <td className="px-4 py-4 text-right font-semibold text-teal-400">
+                    <td className="px-4 py-4 text-right font-semibold text-ualdo-turquesa dark:text-ualdo-aqua">
                       ${(prod.unitPrice || 0).toLocaleString()}
                     </td>
 
@@ -252,7 +252,7 @@ export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct,
                     <td className="px-4 py-4 text-center">
                       <span className={`font-bold text-xs px-2.5 py-1 rounded-lg ${
                         prod.countedStock > 0 || prod.isAudited
-                          ? 'text-emerald-500 bg-emerald-500/10 border border-emerald-500/30'
+                          ? 'text-ualdo-petroleo dark:text-ualdo-aqua bg-ualdo-petroleo/10 border border-ualdo-petroleo/30'
                           : `${textSub} ${innerBg}`
                       }`}>
                         {formatStockText(prod.countedStock, prod.unitsPerBox)}
@@ -262,7 +262,7 @@ export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct,
                     <td className="px-4 py-4 text-right flex items-center justify-end gap-1">
                       <button
                         onClick={() => setEditingProduct({ ...prod })}
-                        className={`p-2 ${textSub} hover:${textTitle} rounded-lg hover:bg-slate-700/50 transition-colors`}
+                        className={`p-2 ${textSub} hover:${textTitle} rounded-lg hover:bg-ualdo-petroleo/10 transition-colors`}
                         title="Editar Medicamento Completo"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -411,17 +411,17 @@ export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct,
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-3 border-t border-slate-700">
+              <div className="flex gap-3 pt-3 border-t border-[var(--border)]">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl"
+                  className="flex-1 btn-pill-primary text-xs"
                 >
                   Actualizar Producto
                 </button>
                 <button
                   type="button"
                   onClick={() => setEditingProduct(null)}
-                  className={`px-4 py-2.5 ${innerBg} ${textSub} rounded-xl`}
+                  className="px-5 btn-pill-secondary text-xs"
                 >
                   Cancelar
                 </button>
@@ -494,17 +494,17 @@ export const StockDashboard = ({ products, batches, onAddProduct, onEditProduct,
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-3 border-t border-slate-700">
+              <div className="flex gap-3 pt-3 border-t border-[var(--border)]">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl"
+                  className="flex-1 btn-pill-primary text-xs"
                 >
                   Guardar Medicamento
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className={`px-4 py-2.5 ${innerBg} ${textSub} rounded-xl`}
+                  className="px-5 btn-pill-secondary text-xs"
                 >
                   Cancelar
                 </button>

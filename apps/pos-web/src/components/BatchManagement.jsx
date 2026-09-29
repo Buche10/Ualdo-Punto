@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Calendar, ShieldAlert, AlertTriangle, CheckCircle, Plus, Search, Filter, Trash2 } from 'lucide-react';
+import { Calendar, Plus, Search, Trash2 } from 'lucide-react';
 
-export const BatchManagement = ({ products, batches, onAddBatch, onDeleteBatch, isDarkMode }) => {
+export const BatchManagement = ({ products, batches, onAddBatch, onDeleteBatch, _isDarkMode }) => {
   const [search, setSearch] = useState('');
   const [filterState, setFilterState] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
@@ -67,73 +67,73 @@ export const BatchManagement = ({ products, batches, onAddBatch, onDeleteBatch, 
     setNewBatch({ productId: '', batchNumber: '', expirationDate: '', quantity: 10 });
   };
 
-  const cardBg = isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md';
-  const innerBg = isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-300';
-  const textTitle = isDarkMode ? 'text-white' : 'text-slate-900';
-  const textSub = isDarkMode ? 'text-slate-400' : 'text-slate-600';
+  const cardBg = 'bg-[var(--surface)] border-[var(--border)] shadow-sm';
+  const innerBg = 'bg-[var(--surface-muted)] border-[var(--border)]';
+  const textTitle = 'text-[var(--text)]';
+  const textSub = 'text-[var(--text-muted)]';
 
   return (
-    <div className="space-y-6 pb-12 animate-fade-in">
+    <div className="space-y-6 pb-12 animate-fade-in text-left">
       
       {/* Cabecera */}
-      <div className={`${cardBg} border rounded-2xl p-5 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4`}>
+      <div className={`${cardBg} border rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4`}>
         <div>
           <h2 className={`text-xl font-bold ${textTitle} flex items-center gap-2`}>
-            <Calendar className="w-6 h-6 text-emerald-500" /> Control de Lotes y Vencimientos
+            <Calendar className="w-6 h-6 text-ualdo-petroleo dark:text-ualdo-aqua" /> Control de Lotes y Vencimientos
           </h2>
           <p className={`${textSub} text-xs mt-1`}>Semáforo de caducidad para prevenir pérdidas por medicamentos vencidos</p>
         </div>
 
         <button
           onClick={() => setShowModal(true)}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-emerald-950/30 flex items-center gap-2 transition-colors"
+          className="btn-pill-primary text-xs flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Registrar Nuevo Lote
         </button>
       </div>
 
       {/* Filtros */}
-      <div className={`${cardBg} border rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4`}>
+      <div className={`${cardBg} border rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4`}>
         <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Buscar por lote, medicamento o código..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className={`w-full ${innerBg} ${textTitle} text-xs rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-emerald-500`}
+            className={`w-full ${innerBg} ${textTitle} text-xs rounded-full pl-10 pr-4 py-2.5 focus:outline-none focus:border-ualdo-turquesa`}
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <button
             onClick={() => setFilterState('ALL')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${
-              filterState === 'ALL' ? 'bg-emerald-600 text-white' : `${innerBg} ${textSub}`
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              filterState === 'ALL' ? 'bg-ualdo-petroleo text-white shadow-sm' : `${innerBg} ${textSub}`
             }`}
           >
             Todos ({batchesWithProducts.length})
           </button>
           <button
             onClick={() => setFilterState('EXPIRED')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${
-              filterState === 'EXPIRED' ? 'bg-rose-600 text-white' : 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              filterState === 'EXPIRED' ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
             }`}
           >
             Vencidos ({batchesWithProducts.filter(b => b.status === 'EXPIRED').length})
           </button>
           <button
             onClick={() => setFilterState('URGENT')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${
-              filterState === 'URGENT' ? 'bg-amber-600 text-white' : 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              filterState === 'URGENT' ? 'bg-amber-600 text-white shadow-sm' : 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
             }`}
           >
             &lt; 30 días ({batchesWithProducts.filter(b => b.status === 'URGENT').length})
           </button>
           <button
             onClick={() => setFilterState('WARNING')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${
-              filterState === 'WARNING' ? 'bg-yellow-600 text-white' : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30'
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              filterState === 'WARNING' ? 'bg-yellow-600 text-white shadow-sm' : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30'
             }`}
           >
             30-60 días ({batchesWithProducts.filter(b => b.status === 'WARNING').length})
@@ -145,8 +145,8 @@ export const BatchManagement = ({ products, batches, onAddBatch, onDeleteBatch, 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredBatches.length > 0 ? (
           filteredBatches.map(b => {
-            let borderColor = isDarkMode ? 'border-slate-800' : 'border-slate-200';
-            let badgeBg = 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30';
+            let borderColor = 'border-[var(--border)]';
+            let badgeBg = 'bg-ualdo-petroleo/10 text-ualdo-petroleo dark:text-ualdo-aqua border-ualdo-petroleo/30';
             let statusText = `Vence en ${b.diffDays} días`;
 
             if (b.status === 'EXPIRED') {
@@ -164,7 +164,7 @@ export const BatchManagement = ({ products, batches, onAddBatch, onDeleteBatch, 
             }
 
             return (
-              <div key={b.id} className={`${cardBg} border ${borderColor} rounded-2xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between`}>
+              <div key={b.id} className={`${cardBg} border ${borderColor} rounded-2xl p-5 shadow-sm relative overflow-hidden flex flex-col justify-between`}>
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className={`font-mono text-xs ${textTitle} ${innerBg} border px-2.5 py-1 rounded-lg font-bold`}>
@@ -178,7 +178,7 @@ export const BatchManagement = ({ products, batches, onAddBatch, onDeleteBatch, 
                       
                       <button
                         onClick={() => onDeleteBatch(b.id)}
-                        className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
+                        className="p-1 text-[var(--text-muted)] hover:text-rose-500 transition-colors"
                         title="Eliminar Lote"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -190,14 +190,14 @@ export const BatchManagement = ({ products, batches, onAddBatch, onDeleteBatch, 
                   <p className={`text-xs ${textSub} mt-1`}>{b.activeIngredient}</p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-700/40 flex items-center justify-between text-xs">
+                <div className="mt-4 pt-3 border-t border-[var(--border)] flex items-center justify-between text-xs">
                   <div>
                     <span className={`${textSub} block text-[11px]`}>Fecha Caducidad</span>
                     <span className={`font-bold ${textTitle}`}>{b.expirationDate}</span>
                   </div>
                   <div className="text-right">
                     <span className={`${textSub} block text-[11px]`}>Cantidad en Lote</span>
-                    <span className="font-extrabold text-emerald-500 text-sm">{b.quantity} un.</span>
+                    <span className="font-extrabold text-ualdo-petroleo dark:text-ualdo-aqua text-sm">{b.quantity} un.</span>
                   </div>
                 </div>
               </div>
@@ -212,7 +212,7 @@ export const BatchManagement = ({ products, batches, onAddBatch, onDeleteBatch, 
 
       {/* Modal Agregar Lote */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className={`${cardBg} border rounded-2xl w-full max-w-md overflow-hidden shadow-2xl p-6`}>
             <h3 className={`text-lg font-bold ${textTitle} mb-4`}>Registrar Lote de Medicamento</h3>
             <form onSubmit={handleSaveBatch} className="space-y-4 text-xs">
@@ -265,17 +265,17 @@ export const BatchManagement = ({ products, batches, onAddBatch, onDeleteBatch, 
                 />
               </div>
 
-              <div className="flex gap-3 pt-3 border-t border-slate-700">
+              <div className="flex gap-3 pt-3 border-t border-[var(--border)]">
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl"
+                  className="flex-1 btn-pill-primary text-xs"
                 >
                   Guardar Lote
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className={`px-4 py-2.5 ${innerBg} ${textSub} rounded-xl`}
+                  className="px-5 btn-pill-secondary text-xs"
                 >
                   Cancelar
                 </button>

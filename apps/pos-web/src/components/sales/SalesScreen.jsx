@@ -111,7 +111,7 @@ export const SalesScreen = ({ products = [], onSaleCompleted, isDarkMode }) => {
       const invoicePayload = {
         emisor: {
           ruc: '1790016919001',
-          razonSocial: 'FARMACIA PHARMASTOCK EXPRESS CIA. LTDA.',
+          razonSocial: 'UALDO NEGOCIOS CIA. LTDA.',
           dirMatriz: 'Av. Amazonas N24-15 y Colón, Quito',
           dirEstablecimiento: 'Av. Amazonas N24-15 y Colón, Quito',
           obligadoContabilidad: 'SI',
@@ -158,10 +158,10 @@ export const SalesScreen = ({ products = [], onSaleCompleted, isDarkMode }) => {
           <button
             type="button"
             onClick={() => setReconciliacionModalOpen(true)}
-            className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold transition border shadow-sm ${
+            className={`btn-pill-secondary text-xs px-4 py-2.5 border-[var(--border)] ${
               isDarkMode
-                ? 'bg-slate-900 border-slate-700/80 text-amber-400 hover:bg-slate-800 hover:text-amber-300'
-                : 'bg-white border-slate-200 text-amber-600 hover:bg-amber-50'
+                ? 'bg-[var(--surface)] text-amber-400 hover:bg-[var(--surface-muted)]'
+                : 'bg-white text-amber-700 hover:bg-amber-50'
             }`}
             title="Reconciliar comprobantes en contingencia SRI"
           >
@@ -171,10 +171,10 @@ export const SalesScreen = ({ products = [], onSaleCompleted, isDarkMode }) => {
           <button
             type="button"
             onClick={() => setDevolucionModalOpen(true)}
-            className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold transition border shadow-sm ${
+            className={`btn-pill-secondary text-xs px-4 py-2.5 border-[var(--border)] ${
               isDarkMode
-                ? 'bg-slate-900 border-slate-700/80 text-rose-400 hover:bg-slate-800 hover:text-rose-300'
-                : 'bg-white border-slate-200 text-rose-600 hover:bg-rose-50'
+                ? 'bg-[var(--surface)] text-rose-400 hover:bg-[var(--surface-muted)]'
+                : 'bg-white text-rose-700 hover:bg-rose-50'
             }`}
             title="Emitir Nota de Crédito (Devolución)"
           >

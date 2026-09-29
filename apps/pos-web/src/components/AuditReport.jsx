@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { FileSpreadsheet, Printer, CheckCircle, AlertCircle, TrendingDown, TrendingUp, RefreshCw, ShieldCheck, Download } from 'lucide-react';
+import { FileSpreadsheet, Printer, ShieldCheck, Download } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { playSuccessChime } from '../utils/audio';
 import { formatStockText } from '../data/mockPharmacyCatalog';
 
-export const AuditReport = ({ products, onApplyAuditAdjustment, isDarkMode }) => {
+export const AuditReport = ({ products, onApplyAuditAdjustment, _isDarkMode }) => {
   const [filterDiscrepancy, setFilterDiscrepancy] = useState('ALL');
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -31,7 +31,6 @@ export const AuditReport = ({ products, onApplyAuditAdjustment, isDarkMode }) =>
     };
   });
 
-  const totalItems = auditData.length;
   const itemsAuditedCount = auditData.filter(d => d.isAudited).length;
   const itemsWithDiscrepancy = auditData.filter(d => d.diff !== 0);
   const itemsFaltantes = auditData.filter(d => d.diff < 0);
@@ -93,18 +92,18 @@ export const AuditReport = ({ products, onApplyAuditAdjustment, isDarkMode }) =>
     window.print();
   };
 
-  const cardBg = isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md';
-  const innerBg = isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-300';
-  const textTitle = isDarkMode ? 'text-white' : 'text-slate-900';
-  const textSub = isDarkMode ? 'text-slate-400' : 'text-slate-600';
+  const cardBg = 'bg-[var(--surface)] border-[var(--border)] shadow-sm';
+  const innerBg = 'bg-[var(--surface-muted)] border-[var(--border)]';
+  const textTitle = 'text-[var(--text)]';
+  const textSub = 'text-[var(--text-muted)]';
 
   return (
-    <div className="space-y-6 pb-12 animate-fade-in print:p-0 print:bg-white print:text-black">
+    <div className="space-y-6 pb-12 animate-fade-in text-left print:p-0 print:bg-white print:text-black">
       
-      <div className={`${cardBg} border rounded-2xl p-5 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4 print:hidden`}>
+      <div className={`${cardBg} border rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4 print:hidden`}>
         <div>
           <h2 className={`text-xl font-bold ${textTitle} flex items-center gap-2`}>
-            <FileSpreadsheet className="w-6 h-6 text-emerald-500" /> Reporte de Auditoría y Faltantes
+            <FileSpreadsheet className="w-6 h-6 text-ualdo-petroleo dark:text-ualdo-aqua" /> Reporte de Auditoría y Faltantes
           </h2>
           <p className={`${textSub} text-xs mt-1`}>Detecta mermas, robos o faltantes a 0 y aplica ajustes de stock en 1 clic</p>
         </div>
@@ -112,26 +111,26 @@ export const AuditReport = ({ products, onApplyAuditAdjustment, isDarkMode }) =>
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           <button
             onClick={exportToCSV}
-            className={`px-4 py-2.5 ${innerBg} ${textSub} hover:${textTitle} text-xs font-semibold rounded-xl flex items-center gap-2 transition-colors`}
+            className="btn-pill-secondary text-xs flex items-center gap-2"
           >
-            <Download className="w-4 h-4 text-emerald-500" /> Exportar CSV
+            <Download className="w-4 h-4 text-ualdo-petroleo dark:text-ualdo-aqua" /> Exportar CSV
           </button>
           
           <button
             onClick={handlePrint}
-            className={`px-4 py-2.5 ${innerBg} ${textSub} hover:${textTitle} text-xs font-semibold rounded-xl flex items-center gap-2 transition-colors`}
+            className="btn-pill-secondary text-xs flex items-center gap-2"
           >
-            <Printer className="w-4 h-4 text-emerald-500" /> Imprimir
+            <Printer className="w-4 h-4 text-ualdo-petroleo dark:text-ualdo-aqua" /> Imprimir
           </button>
 
           <button
             onClick={handleConfirmAdjustment}
             disabled={isSyncing || itemsAuditedCount === 0}
-            className={`px-5 py-2.5 ${
+            className={`px-5 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 transition-all ${
               itemsAuditedCount > 0 
-                ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/40' 
-                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
-            } font-bold text-xs rounded-xl flex items-center gap-2 transition-all`}
+                ? 'btn-pill-primary' 
+                : 'bg-[var(--surface-muted)] text-[var(--text-muted)] cursor-not-allowed border border-[var(--border)]'
+            }`}
           >
             <ShieldCheck className="w-4 h-4" /> APLICAR AJUSTE ({itemsAuditedCount} AUDITADOS)
           </button>
@@ -141,7 +140,7 @@ export const AuditReport = ({ products, onApplyAuditAdjustment, isDarkMode }) =>
       {/* Tarjetas Resumen */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         
-        <div className={`${cardBg} border rounded-2xl p-5 shadow-xl print:border-black print:bg-white`}>
+        <div className={`${cardBg} border rounded-2xl p-5 shadow-sm print:border-black print:bg-white`}>
           <div className={`text-xs font-bold ${textSub} uppercase tracking-wider print:text-black`}>Diferencias de Auditoría</div>
           <div className="mt-2 flex items-baseline justify-between">
             <div className="text-3xl font-black text-amber-500 print:text-black">{itemsWithDiscrepancy.length}</div>
@@ -149,17 +148,17 @@ export const AuditReport = ({ products, onApplyAuditAdjustment, isDarkMode }) =>
           </div>
         </div>
 
-        <div className={`${cardBg} border rounded-2xl p-5 shadow-xl print:border-black print:bg-white`}>
+        <div className={`${cardBg} border rounded-2xl p-5 shadow-sm print:border-black print:bg-white`}>
           <div className={`text-xs font-bold ${textSub} uppercase tracking-wider print:text-black`}>Pérdida por Faltante (Costo)</div>
           <div className="mt-2 text-2xl font-black text-rose-500 print:text-black">
             -${totalDeficitCost.toLocaleString()}
           </div>
         </div>
 
-        <div className={`${cardBg} border rounded-2xl p-5 shadow-xl print:border-black print:bg-white`}>
+        <div className={`${cardBg} border rounded-2xl p-5 shadow-sm print:border-black print:bg-white`}>
           <div className={`text-xs font-bold ${textSub} uppercase tracking-wider print:text-black`}>Impacto Financiero Neto</div>
           <div className={`mt-2 text-2xl font-black ${
-            netFinancialImpact < 0 ? 'text-rose-500' : netFinancialImpact > 0 ? 'text-emerald-500' : textTitle
+            netFinancialImpact < 0 ? 'text-rose-500' : netFinancialImpact > 0 ? 'text-ualdo-petroleo dark:text-ualdo-aqua' : textTitle
           } print:text-black`}>
             {netFinancialImpact >= 0 ? `+$${netFinancialImpact.toLocaleString()}` : `-$${Math.abs(netFinancialImpact).toLocaleString()}`}
           </div>
@@ -172,24 +171,24 @@ export const AuditReport = ({ products, onApplyAuditAdjustment, isDarkMode }) =>
         <span className={`text-xs ${textSub} font-semibold`}>Mostrar:</span>
         <button
           onClick={() => setFilterDiscrepancy('ALL')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
-            filterDiscrepancy === 'ALL' ? 'bg-emerald-600 text-white' : `${innerBg} ${textSub}`
+          className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            filterDiscrepancy === 'ALL' ? 'bg-ualdo-petroleo text-white shadow-sm' : `${innerBg} ${textSub}`
           }`}
         >
           Todos ({auditData.length})
         </button>
         <button
           onClick={() => setFilterDiscrepancy('AUDITED_ONLY')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
-            filterDiscrepancy === 'AUDITED_ONLY' ? 'bg-indigo-600 text-white' : `${innerBg} ${textSub}`
+          className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            filterDiscrepancy === 'AUDITED_ONLY' ? 'bg-ualdo-turquesa text-white shadow-sm' : `${innerBg} ${textSub}`
           }`}
         >
           Solo Auditados en Sesión ({itemsAuditedCount})
         </button>
         <button
           onClick={() => setFilterDiscrepancy('DIFFERENCE_ONLY')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
-            filterDiscrepancy === 'DIFFERENCE_ONLY' ? 'bg-amber-600 text-white' : `${innerBg} ${textSub}`
+          className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            filterDiscrepancy === 'DIFFERENCE_ONLY' ? 'bg-amber-600 text-white shadow-sm' : `${innerBg} ${textSub}`
           }`}
         >
           Solo Con Descuadre ({itemsWithDiscrepancy.length})
@@ -197,10 +196,10 @@ export const AuditReport = ({ products, onApplyAuditAdjustment, isDarkMode }) =>
       </div>
 
       {/* Tabla Auditada */}
-      <div className={`${cardBg} border rounded-2xl shadow-xl overflow-hidden print:border-black print:bg-white`}>
+      <div className={`${cardBg} border rounded-2xl shadow-sm overflow-hidden print:border-black print:bg-white`}>
         <div className="overflow-x-auto">
           <table className={`w-full text-left text-sm ${textSub} print:text-black`}>
-            <thead className={`${innerBg} border-b text-slate-400 uppercase text-[11px] font-bold print:bg-gray-100 print:text-black`}>
+            <thead className={`${innerBg} border-b text-[var(--text-muted)] uppercase text-[11px] font-bold print:bg-gray-100 print:text-black`}>
               <tr>
                 <th className="px-5 py-3.5">Medicamento</th>
                 <th className="px-4 py-3.5 text-center">Unid/Caja</th>
@@ -210,10 +209,10 @@ export const AuditReport = ({ products, onApplyAuditAdjustment, isDarkMode }) =>
                 <th className="px-4 py-3.5 text-right">Impacto Financiero</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700/40 print:divide-gray-300">
+            <tbody className="divide-y divide-[var(--border)] print:divide-gray-300">
               {filteredAuditData.length > 0 ? (
                 filteredAuditData.map(item => (
-                  <tr key={item.id} className="hover:bg-emerald-500/5 transition-colors">
+                  <tr key={item.id} className="hover:bg-ualdo-petroleo/5 transition-colors">
                     
                     <td className="px-5 py-4">
                       <div className={`font-bold ${textTitle} print:text-black`}>{item.name}</div>
@@ -228,7 +227,7 @@ export const AuditReport = ({ products, onApplyAuditAdjustment, isDarkMode }) =>
                       {formatStockText(item.theoreticalStock, item.unitsPerBox)}
                     </td>
 
-                    <td className="px-4 py-4 text-center font-bold text-emerald-500 text-xs">
+                    <td className="px-4 py-4 text-center font-bold text-ualdo-petroleo dark:text-ualdo-aqua text-xs">
                       {item.isAudited ? formatStockText(item.countedStock, item.unitsPerBox) : 'Pendiente'}
                     </td>
 
@@ -239,7 +238,7 @@ export const AuditReport = ({ products, onApplyAuditAdjustment, isDarkMode }) =>
                             ? 'text-rose-500 bg-rose-500/10 border border-rose-500/30'
                             : item.diff > 0
                             ? 'text-amber-500 bg-amber-500/10 border border-amber-500/30'
-                            : 'text-emerald-500 bg-emerald-500/10'
+                            : 'text-ualdo-petroleo dark:text-ualdo-aqua bg-ualdo-petroleo/10 border border-ualdo-petroleo/20'
                         }`}>
                           {formatStockText(item.diff, item.unitsPerBox)}
                         </span>

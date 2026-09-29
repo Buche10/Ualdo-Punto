@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Plus, Check, RefreshCw, Zap, Calendar, Package, AlertTriangle, Search, Volume2, ShieldAlert, Box, Pill, DollarSign, RotateCcw, Sliders, PackagePlus, Save } from 'lucide-react';
+import { Camera, Check, RefreshCw, Zap, Calendar, Package, Search, Box, Pill, RotateCcw, PackagePlus, Save } from 'lucide-react';
 import { ScannerModal } from './ScannerModal';
 import { playScanBeep, playWarningBeep, playSuccessChime } from '../utils/audio';
 import { formatStockText } from '../data/mockPharmacyCatalog';
 import { loadAuditLogs, saveAuditLogs } from '../utils/storage';
 
-export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCount, onAddBatch, onAddNewProduct, isDarkMode }) => {
+export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCount, onAddBatch, onAddNewProduct, _isDarkMode }) => {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -250,29 +250,29 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
       )
     : [];
 
-  const cardBg = isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-lg';
-  const innerBg = isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-300';
-  const textTitle = isDarkMode ? 'text-white' : 'text-slate-900';
-  const textSub = isDarkMode ? 'text-slate-400' : 'text-slate-600';
+  const cardBg = 'bg-[var(--surface)] border-[var(--border)] shadow-sm';
+  const innerBg = 'bg-[var(--surface-muted)] border-[var(--border)]';
+  const textTitle = 'text-[var(--text)]';
+  const textSub = 'text-[var(--text-muted)]';
 
   return (
-    <div className="space-y-6 pb-12 animate-fade-in">
+    <div className="space-y-6 pb-12 animate-fade-in text-left">
       
       {/* Selector de Modo */}
-      <div className={`${cardBg} border rounded-2xl p-5 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors`}>
+      <div className={`${cardBg} border rounded-2xl p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors`}>
         <div>
           <h2 className={`text-xl font-bold ${textTitle} flex items-center gap-2`}>
-            <Package className="w-6 h-6 text-emerald-500" /> Conteo por Cajas y Unidades Sueltas
+            <Package className="w-6 h-6 text-ualdo-petroleo dark:text-ualdo-aqua" /> Conteo por Cajas y Unidades Sueltas
           </h2>
           <p className={`${textSub} text-xs mt-1`}>Escanea con la cámara del celular o usa tu lector USB de la farmacia</p>
         </div>
 
-        <div className={`flex items-center gap-3 ${innerBg} p-1.5 rounded-xl border self-start md:self-auto`}>
+        <div className={`flex items-center gap-2 ${innerBg} p-1.5 rounded-full border self-start md:self-auto`}>
           <button
             onClick={() => setCountMode('detailed')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
+            className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all ${
               countMode === 'detailed'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/30'
+                ? 'bg-ualdo-petroleo text-white shadow-sm'
                 : textSub
             }`}
           >
@@ -280,9 +280,9 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
           </button>
           <button
             onClick={() => setCountMode('burst')}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all ${
+            className={`px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all ${
               countMode === 'burst'
-                ? 'bg-amber-600 text-white shadow-md shadow-amber-900/30'
+                ? 'bg-amber-600 text-white shadow-sm'
                 : textSub
             }`}
           >
@@ -296,18 +296,14 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
         {/* Panel Principal */}
         <div className="md:col-span-2 space-y-6">
           
-          <div className={`${
-            isDarkMode 
-              ? 'bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/30 border-emerald-500/30' 
-              : 'bg-gradient-to-br from-white via-white to-emerald-50 border-emerald-200 shadow-md'
-          } border rounded-2xl p-6 shadow-2xl relative overflow-hidden`}>
+          <div className={`${cardBg} border rounded-2xl p-6 shadow-sm relative overflow-hidden`}>
             
             <button
               onClick={() => setIsScannerOpen(true)}
-              className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-3 shadow-xl shadow-emerald-950/40 transition-all border border-emerald-400/30 group"
+              className="w-full py-4 btn-pill-primary text-base flex items-center justify-center gap-3 shadow-md group"
             >
-              <div className="p-2 bg-white/10 rounded-xl group-hover:scale-110 transition-transform">
-                <Camera className="w-7 h-7 text-white" />
+              <div className="p-2 bg-white/10 rounded-full group-hover:scale-110 transition-transform">
+                <Camera className="w-6 h-6 text-white" />
               </div>
               ESCANEAR CÓDIGO CON EL CELULAR
             </button>
@@ -315,10 +311,10 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
             <div className="mt-5 relative">
               <label className={`block text-xs font-semibold ${textSub} mb-2 flex items-center justify-between`}>
                 <span>Buscar por Nombre o Código EAN-13:</span>
-                <span className="text-slate-400 text-[11px] font-normal">Soporta Escáner USB</span>
+                <span className="text-[var(--text-muted)] text-[11px] font-normal">Soporta Escáner USB</span>
               </label>
               <div className="relative">
-                <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <Search className="w-5 h-5 text-[var(--text-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -331,7 +327,7 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
                       handleBarcodeScanned(searchQuery.trim());
                     }
                   }}
-                  className={`w-full ${innerBg} ${textTitle} text-base rounded-xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-emerald-500 placeholder:text-slate-400 shadow-inner`}
+                  className={`w-full ${innerBg} ${textTitle} text-base rounded-full pl-12 pr-4 py-3.5 focus:outline-none focus:border-ualdo-turquesa focus:ring-1 focus:ring-ualdo-turquesa placeholder:text-[var(--text-muted)] shadow-inner`}
                 />
               </div>
             </div>
@@ -597,9 +593,9 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
                 <button
                   type="button"
                   onClick={() => setEntryMethod('add')}
-                  className={`px-3 py-1.5 rounded-lg border transition-all ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                     entryMethod === 'add'
-                      ? 'bg-emerald-600 text-white border-emerald-500'
+                      ? 'bg-ualdo-petroleo text-white border-ualdo-petroleo shadow-sm'
                       : `${innerBg} ${textSub}`
                   }`}
                 >
@@ -608,9 +604,9 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
                 <button
                   type="button"
                   onClick={() => setEntryMethod('exact')}
-                  className={`px-3 py-1.5 rounded-lg border transition-all ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                     entryMethod === 'exact'
-                      ? 'bg-indigo-600 text-white border-indigo-500'
+                      ? 'bg-ualdo-turquesa text-white border-ualdo-turquesa shadow-sm'
                       : `${innerBg} ${textSub}`
                   }`}
                 >
@@ -626,13 +622,13 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
                   {/* Cajas Completas */}
                   <div className={`${innerBg} p-4 rounded-xl border`}>
                     <label className={`block text-xs font-bold ${textTitle} mb-2 flex items-center gap-1.5`}>
-                      <Box className="w-4 h-4 text-emerald-500" /> Cajas Completas:
+                      <Box className="w-4 h-4 text-ualdo-petroleo dark:text-ualdo-aqua" /> Cajas Completas:
                     </label>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setCountBoxes(Math.max(0, countBoxes - 1))}
-                        className="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-lg"
+                        className="px-3.5 py-2 bg-[var(--surface)] hover:bg-[var(--border)] text-[var(--text)] border border-[var(--border)] rounded-lg font-bold text-lg"
                       >
                         -
                       </button>
@@ -641,12 +637,12 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
                         min="0"
                         value={countBoxes}
                         onChange={(e) => setCountBoxes(parseInt(e.target.value) || 0)}
-                        className={`w-full ${isDarkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'} border border-slate-700 text-center font-black text-xl py-1.5 rounded-lg focus:outline-none focus:border-emerald-500`}
+                        className={`w-full ${innerBg} ${textTitle} border border-[var(--border)] text-center font-black text-xl py-1.5 rounded-lg focus:outline-none focus:border-ualdo-turquesa`}
                       />
                       <button
                         type="button"
                         onClick={() => setCountBoxes(countBoxes + 1)}
-                        className="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-lg"
+                        className="px-3.5 py-2 bg-[var(--surface)] hover:bg-[var(--border)] text-[var(--text)] border border-[var(--border)] rounded-lg font-bold text-lg"
                       >
                         +
                       </button>
@@ -656,13 +652,13 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
                   {/* Unidades Sueltas */}
                   <div className={`${innerBg} p-4 rounded-xl border`}>
                     <label className={`block text-xs font-bold ${textTitle} mb-2 flex items-center gap-1.5`}>
-                      <Pill className="w-4 h-4 text-teal-500" /> Unidades Sueltas / Blísteres:
+                      <Pill className="w-4 h-4 text-ualdo-turquesa dark:text-ualdo-aqua" /> Unidades Sueltas / Blísteres:
                     </label>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setCountLooseUnits(Math.max(0, countLooseUnits - 1))}
-                        className="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-lg"
+                        className="px-3.5 py-2 bg-[var(--surface)] hover:bg-[var(--border)] text-[var(--text)] border border-[var(--border)] rounded-lg font-bold text-lg"
                       >
                         -
                       </button>
@@ -671,12 +667,12 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
                         min="0"
                         value={countLooseUnits}
                         onChange={(e) => setCountLooseUnits(parseInt(e.target.value) || 0)}
-                        className={`w-full ${isDarkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'} border border-slate-700 text-center font-black text-xl py-1.5 rounded-lg focus:outline-none focus:border-emerald-500`}
+                        className={`w-full ${innerBg} ${textTitle} border border-[var(--border)] text-center font-black text-xl py-1.5 rounded-lg focus:outline-none focus:border-ualdo-turquesa`}
                       />
                       <button
                         type="button"
                         onClick={() => setCountLooseUnits(countLooseUnits + 1)}
-                        className="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-lg"
+                        className="px-3.5 py-2 bg-[var(--surface)] hover:bg-[var(--border)] text-[var(--text)] border border-[var(--border)] rounded-lg font-bold text-lg"
                       >
                         +
                       </button>
@@ -686,11 +682,11 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
                 </div>
 
                 {/* Resumen Total */}
-                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3.5 flex items-center justify-between text-xs">
-                  <span className="text-emerald-500 font-semibold">
+                <div className="bg-ualdo-petroleo/10 border border-ualdo-petroleo/30 rounded-xl p-3.5 flex items-center justify-between text-xs">
+                  <span className="text-ualdo-petroleo dark:text-ualdo-aqua font-semibold">
                     {entryMethod === 'exact' ? 'NUEVO TOTAL EXACTO A FIJAR:' : 'TOTAL A SUMAR AL CONTEO:'}
                   </span>
-                  <span className="text-base font-black text-emerald-500">
+                  <span className="text-base font-black text-ualdo-petroleo dark:text-ualdo-aqua">
                     {formatStockText((countBoxes * (selectedProduct.unitsPerBox || 1)) + countLooseUnits, selectedProduct.unitsPerBox)}
                   </span>
                 </div>
@@ -704,7 +700,7 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
                       placeholder="Ej. LOT-2026-X"
                       value={batchNumber}
                       onChange={(e) => setBatchNumber(e.target.value.toUpperCase())}
-                      className={`w-full ${innerBg} ${textTitle} text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-emerald-500 uppercase`}
+                      className={`w-full ${innerBg} ${textTitle} text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-ualdo-turquesa uppercase`}
                     />
                   </div>
 
@@ -714,7 +710,7 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
                       type="date"
                       value={expirationDate}
                       onChange={(e) => setExpirationDate(e.target.value)}
-                      className={`w-full ${innerBg} ${textTitle} text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-emerald-500`}
+                      className={`w-full ${innerBg} ${textTitle} text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-ualdo-turquesa`}
                     />
                   </div>
                 </div>
@@ -722,14 +718,14 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
                 <div className="flex gap-3 pt-2">
                   <button
                     type="submit"
-                    className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-950/40 flex items-center justify-center gap-2 text-base transition-colors"
+                    className="flex-1 py-3.5 btn-pill-primary text-base flex items-center justify-center gap-2"
                   >
                     <Check className="w-5 h-5" /> CONFIRMAR Y REGISTRAR CONTEO
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedProduct(null)}
-                    className={`px-5 py-3.5 ${innerBg} ${textSub} rounded-xl font-semibold text-sm`}
+                    className="px-5 py-3.5 btn-pill-secondary text-sm font-semibold"
                   >
                     Cancelar
                   </button>
@@ -742,12 +738,12 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
         </div>
 
         {/* Historial de Registro Persistente */}
-        <div className={`${cardBg} border rounded-2xl p-5 shadow-xl flex flex-col h-full min-h-[400px]`}>
-          <div className="flex items-center justify-between pb-3 border-b border-slate-700/50 mb-4">
+        <div className={`${cardBg} border rounded-2xl p-5 shadow-sm flex flex-col h-full min-h-[400px]`}>
+          <div className="flex items-center justify-between pb-3 border-b border-[var(--border)] mb-4">
             <h3 className={`font-bold ${textTitle} text-sm flex items-center gap-2`}>
-              <RefreshCw className="w-4 h-4 text-emerald-500" /> Sesión de Conteo Persistente
+              <RefreshCw className="w-4 h-4 text-ualdo-petroleo dark:text-ualdo-aqua" /> Sesión de Conteo Persistente
             </h3>
-            <span className={`text-xs ${innerBg} ${textSub} px-2 py-0.5 rounded-full font-mono`}>
+            <span className={`text-xs ${innerBg} ${textSub} px-2.5 py-0.5 rounded-full font-mono border`}>
               {countHistory.length} registros
             </span>
           </div>
@@ -764,7 +760,7 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="font-extrabold text-emerald-500 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded text-xs block">
+                      <span className="font-extrabold text-ualdo-petroleo dark:text-ualdo-aqua bg-ualdo-petroleo/10 border border-ualdo-petroleo/30 px-2 py-0.5 rounded text-xs block">
                         {item.mode === 'exact' ? '=' : '+'}{formatStockText(item.addedUnits, item.unitsPerBox)}
                       </span>
                     </div>
@@ -773,7 +769,11 @@ export const QuickCount = ({ products, batches, onUpdateCount, onResetSingleCoun
               ))
             ) : (
               <div className={`h-full flex flex-col items-center justify-center text-center p-6 ${textSub}`}>
-                <Package className="w-10 h-10 mb-2 opacity-30" />
+                <img
+                  src="/ualdo-mascota.png"
+                  alt="Ualdo"
+                  className="w-16 h-16 object-contain mb-3 opacity-80"
+                />
                 <p className="text-xs">Aún no se han contado productos en esta sesión.</p>
               </div>
             )}

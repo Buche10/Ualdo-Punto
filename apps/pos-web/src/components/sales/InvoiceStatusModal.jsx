@@ -27,7 +27,7 @@ export const InvoiceStatusModal = ({ isOpen, onClose, claveAcceso, initialData, 
   };
 
   const handleSendEmail = () => {
-    const email = clientEmail || 'cliente@farmacia.com';
+    const email = clientEmail || 'cliente@ualdocorp.com';
     const conf = window.confirm(`¿Confirmar envío de factura electrónica al correo ${email}?`);
     if (conf) {
       setEmailSent(true);
@@ -39,9 +39,9 @@ export const InvoiceStatusModal = ({ isOpen, onClose, claveAcceso, initialData, 
     switch (estado) {
       case 'AUTORIZADO':
         return {
-          icon: <CheckCircle2 className="w-8 h-8 text-emerald-400" />,
+          icon: <CheckCircle2 className="w-8 h-8 text-[var(--ualdo-aqua)]" />,
           title: 'Factura Autorizada por el SRI',
-          color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+          color: 'text-[var(--ualdo-aqua)] bg-[var(--ualdo-aqua)]/10 border-[var(--ualdo-aqua)]/30',
           desc: 'El comprobante ha sido validado y autorizado legalmente por la autoridad tributaria.',
         };
       case 'RECIBIDA':
@@ -70,9 +70,9 @@ export const InvoiceStatusModal = ({ isOpen, onClose, claveAcceso, initialData, 
         };
       default:
         return {
-          icon: <Clock className="w-8 h-8 text-slate-400" />,
+          icon: <Clock className="w-8 h-8 text-[var(--text-muted)]" />,
           title: estado,
-          color: 'text-slate-400 bg-slate-500/10 border-slate-500/30',
+          color: 'text-[var(--text-muted)] bg-[var(--surface-muted)] border-[var(--border)]',
           desc: 'Estado del comprobante en procesamiento.',
         };
     }
@@ -82,7 +82,7 @@ export const InvoiceStatusModal = ({ isOpen, onClose, claveAcceso, initialData, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-      <div className={`w-full max-w-lg p-6 rounded-3xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'} shadow-2xl space-y-4 text-xs`}>
+      <div className={`w-full max-w-lg p-6 rounded-3xl border ${isDarkMode ? 'bg-[var(--surface)] border-[var(--border)] text-white' : 'bg-white border-[var(--border)] text-[var(--text)]'} shadow-2xl space-y-4 text-xs`}>
         {/* Encabezado Estado */}
         <div className={`p-4 rounded-2xl border flex items-center gap-3.5 ${badge.color}`}>
           {badge.icon}
@@ -93,23 +93,23 @@ export const InvoiceStatusModal = ({ isOpen, onClose, claveAcceso, initialData, 
         </div>
 
         {/* Clave de Acceso */}
-        <div className={`p-3 rounded-xl border ${isDarkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-slate-50 border-slate-200'} space-y-1`}>
-          <div className="flex items-center justify-between text-slate-400 text-[10px] uppercase font-bold tracking-wider">
+        <div className={`p-3 rounded-2xl border ${isDarkMode ? 'bg-[var(--surface-muted)] border-[var(--border)]' : 'bg-[var(--surface-muted)] border-[var(--border)]'} space-y-1`}>
+          <div className="flex items-center justify-between text-[var(--text-muted)] text-[10px] uppercase font-bold tracking-wider">
             <span>Clave de Acceso (49 Dígitos)</span>
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1 text-emerald-500 hover:text-emerald-400"
+              className="flex items-center gap-1 text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)] hover:underline"
             >
               {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
               {copied ? 'Copiada' : 'Copiar'}
             </button>
           </div>
-          <p className="font-mono text-[11px] break-all select-all font-semibold text-slate-200 dark:text-white">
+          <p className="font-mono text-[11px] break-all select-all font-semibold text-[var(--text)]">
             {claveAcceso}
           </p>
           {numAutorizacion && numAutorizacion !== claveAcceso && (
-            <p className="text-[10px] text-emerald-400 pt-1">
+            <p className="text-[10px] text-[var(--ualdo-aqua)] pt-1">
               No. Autorización: {numAutorizacion}
             </p>
           )}
@@ -117,7 +117,7 @@ export const InvoiceStatusModal = ({ isOpen, onClose, claveAcceso, initialData, 
 
         {/* Mensajes del SRI si existen */}
         {mensajes.length > 0 && (
-          <div className="p-3 rounded-xl border border-rose-500/20 bg-rose-500/10 space-y-1">
+          <div className="p-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 space-y-1">
             <p className="font-bold text-rose-400 text-[11px]">Mensajes del SRI:</p>
             {mensajes.map((m, idx) => (
               <p key={idx} className="text-[10px] text-rose-300">
@@ -132,18 +132,18 @@ export const InvoiceStatusModal = ({ isOpen, onClose, claveAcceso, initialData, 
           <button
             type="button"
             onClick={() => apiClient.descargarRide(claveAcceso).catch((err) => alert(err.message))}
-            className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all text-center"
+            className="btn-pill-secondary py-2.5 px-3 text-xs w-full"
           >
-            <FileText className="w-4 h-4 text-emerald-400" />
+            <FileText className="w-4 h-4 text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)]" />
             <span>Ver / Descargar RIDE</span>
           </button>
 
           <button
             type="button"
             onClick={() => apiClient.descargarXml(claveAcceso).catch((err) => alert(err.message))}
-            className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all text-center"
+            className="btn-pill-secondary py-2.5 px-3 text-xs w-full"
           >
-            <Download className="w-4 h-4 text-cyan-400" />
+            <Download className="w-4 h-4 text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)]" />
             <span>Descargar XML</span>
           </button>
         </div>
@@ -151,25 +151,25 @@ export const InvoiceStatusModal = ({ isOpen, onClose, claveAcceso, initialData, 
         <button
           type="button"
           onClick={handleSendEmail}
-          className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl font-semibold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 transition-all"
+          className="btn-pill-secondary w-full py-2.5 text-xs text-[var(--ualdo-petroleo)] dark:text-[var(--ualdo-aqua)] border-[var(--ualdo-aqua)]/30 bg-[var(--ualdo-aqua)]/10"
         >
           <Mail className="w-4 h-4" />
-          <span>{emailSent ? '¡Comprobante enviado por email!' : 'Enviar RIDE + XML por Email'}</span>
+          <span>{emailSent ? 'Comprobante enviado por email' : 'Enviar RIDE + XML por Email'}</span>
         </button>
 
         {/* Botón Nueva Venta / Cerrar */}
-        <div className="pt-2 flex justify-end gap-2 border-t border-slate-800">
+        <div className="pt-2 flex justify-end gap-2 border-t border-[var(--border)]">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-slate-400 hover:text-white rounded-xl"
+            className="btn-pill-secondary px-4 py-2 text-xs"
           >
             Cerrar
           </button>
           <button
             type="button"
             onClick={onNewSale}
-            className="flex items-center gap-1.5 px-5 py-2 rounded-xl font-bold bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-950/40 transition-all"
+            className="btn-pill-primary px-5 py-2 text-xs"
           >
             <span>Nueva Venta</span>
             <ArrowRight className="w-4 h-4" />

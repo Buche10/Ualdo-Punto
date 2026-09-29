@@ -1,9 +1,121 @@
 @import "tailwindcss";
 
+:root {
+  --ualdo-negro: #1d1d1b;
+  --ualdo-petroleo: #00737f;
+  --ualdo-turquesa: #2d9ba1;
+  --ualdo-aqua: #62c9c8;
+  --ualdo-pizarra: #3b515b;
+  --ualdo-blanco: #ffffff;
+
+  /* Modo claro */
+  --bg: #f8fafb;
+  --surface: #ffffff;
+  --surface-muted: #eef5f7;
+  --text: #1d1d1b;
+  --text-muted: #3b515b;
+  --border: #d4e2e6;
+  --color-primary: #00737f;
+  --color-primary-hover: #2d9ba1;
+  --color-accent: #2d9ba1;
+}
+
+.dark {
+  /* Modo oscuro */
+  --bg: #1d1d1b;
+  --surface: #3b515b;
+  --surface-muted: #2a3d46;
+  --text: #ffffff;
+  --text-muted: #c8d7de;
+  --border: rgba(98, 201, 200, 0.25);
+  --color-primary: #00737f;
+  --color-primary-hover: #2d9ba1;
+  --color-accent: #62c9c8;
+}
+
+@theme {
+  --color-ualdo-negro: var(--ualdo-negro);
+  --color-ualdo-petroleo: var(--ualdo-petroleo);
+  --color-ualdo-turquesa: var(--ualdo-turquesa);
+  --color-ualdo-aqua: var(--ualdo-aqua);
+  --color-ualdo-pizarra: var(--ualdo-pizarra);
+  --color-ualdo-blanco: var(--ualdo-blanco);
+
+  --color-primary: var(--color-primary);
+  --color-accent: var(--color-accent);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+
+  --font-sans: 'Poppins', sans-serif;
+}
+
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-white;
+    font-family: 'Poppins', sans-serif;
+    text-align: left;
+    background-color: var(--bg);
+    color: var(--text);
   }
+}
+
+/* Clases utilitarias de botones pastilla */
+.btn-pill-primary {
+  border-radius: 9999px;
+  background-color: var(--ualdo-petroleo);
+  color: #ffffff;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  box-shadow: 0 4px 6px -1px rgba(0, 115, 127, 0.3);
+}
+
+.btn-pill-primary:hover:not(:disabled) {
+  background-color: var(--ualdo-turquesa);
+}
+
+.btn-pill-secondary {
+  border-radius: 9999px;
+  background-color: #ffffff;
+  color: var(--ualdo-petroleo);
+  border: 1px solid rgba(0, 115, 127, 0.35);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.btn-pill-secondary:hover:not(:disabled) {
+  background-color: rgba(98, 201, 200, 0.12);
+}
+
+.btn-pill-aqua {
+  border-radius: 9999px;
+  background-color: var(--ualdo-aqua);
+  color: var(--ualdo-negro);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  box-shadow: 0 4px 6px -1px rgba(98, 201, 200, 0.3);
+}
+
+.btn-pill-aqua:hover:not(:disabled) {
+  background-color: var(--ualdo-turquesa);
+  color: #ffffff;
 }
 
 @keyframes fadeIn {
@@ -28,14 +140,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
+  background: var(--ualdo-pizarra);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 185, 129, 0.8);
+  background: var(--ualdo-turquesa);
 }
