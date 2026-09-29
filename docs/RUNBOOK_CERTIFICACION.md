@@ -38,7 +38,8 @@ SRI_P12_PATH=C:/ruta/segura/a/su_firma.p12
 SRI_P12_PASSWORD=clave_de_su_firma
 SRI_RUC_EMISOR=1790016919001
 SRI_REQUIRE_DB=false
-POS_API_KEY=pharmastock-pos-secure-key-2026
+JWT_SECRET=tu_clave_secreta_jwt_de_al_menos_32_caracteres_minimo
+POS_API_KEY=tu_clave_api_interna_de_al_menos_32_caracteres
 ```
 
 ### 2.2 Ejecución del Harness de Certificación

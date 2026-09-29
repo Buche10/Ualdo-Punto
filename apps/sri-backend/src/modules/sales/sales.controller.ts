@@ -1,12 +1,12 @@
 import { Controller, Post, Get, Body, Param, UseGuards, UsePipes } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import { CrearVentaDto, CrearVentaSchema } from './sales.dto';
-import { ApiKeyGuard } from '../../common/guards/api-key.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { createSuccessResponse } from '@pharmastock/shared';
 
 @Controller('ventas')
-@UseGuards(ApiKeyGuard)
+@UseGuards(JwtAuthGuard)
 export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 

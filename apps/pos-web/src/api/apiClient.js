@@ -3,11 +3,6 @@ const getBaseUrl = () => {
   return envUrl || 'http://localhost:3001/api';
 };
 
-const getApiKey = () => {
-  const envKey = typeof import.meta !== 'undefined' && (import.meta.env?.VITE_API_KEY || import.meta.env?.VITE_POS_API_KEY);
-  return envKey || 'pharmastock-pos-secure-key-2026';
-};
-
 export class ApiError extends Error {
   constructor(message, status = 500, details = null) {
     super(message);
@@ -17,19 +12,29 @@ export class ApiError extends Error {
   }
 }
 
+let onUnauthorizedHandler = null;
+
+export const setOnUnauthorized = (handler) => {
+  onUnauthorizedHandler = handler;
+};
+
 async function request(endpoint, options = {}) {
   const baseUrl = getBaseUrl();
-  const apiKey = getApiKey();
-  const url = `${baseUrl.replace(/\/$/, '')}/${endpoint.replace(/^\//, '')}`;
+  const cleanEndpoint = endpoint.replace(/^\//, '');
+  const url = `${baseUrl.replace(/\/$/, '')}/${cleanEndpoint}`;
 
   const headers = {
     'Content-Type': 'application/json',
-    'x-api-key': apiKey,
     ...(options.headers || {}),
   };
 
   try {
-    const res = await fetch(url, { ...options, headers });
+    const res = await fetch(url, {
+      ...options,
+      headers,
+      credentials: 'include',
+    });
+
     const text = await res.text();
     let data;
     try {
@@ -39,6 +44,11 @@ async function request(endpoint, options = {}) {
     }
 
     if (!res.ok) {
+      if (res.status === 401 && !cleanEndpoint.startsWith('auth/login') && !cleanEndpoint.startsWith('auth/me')) {
+        if (typeof onUnauthorizedHandler === 'function') {
+          onUnauthorizedHandler();
+        }
+      }
       const errorMsg = data?.message || data?.error || `Error HTTP ${res.status}: ${res.statusText}`;
       throw new ApiError(errorMsg, res.status, data);
     }
@@ -46,11 +56,26 @@ async function request(endpoint, options = {}) {
     return data;
   } catch (err) {
     if (err instanceof ApiError) throw err;
-    throw new ApiError(err.message || 'Error de conexión con el servidor', 0, err);
+    throw new ApiError(err.message || 'Error de conexion con el servidor', 0, err);
   }
 }
 
 export const apiClient = {
+  // Autenticacion Ualdo Negocios
+  login: (email, password) =>
+    request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+
+  logout: () =>
+    request('/auth/logout', {
+      method: 'POST',
+    }),
+
+  obtenerUsuarioActual: () =>
+    request('/auth/me'),
+
   // Clientes
   buscarCliente: (identificacion) =>
     request(`/clientes/buscar?identificacion=${encodeURIComponent(identificacion)}`),
@@ -65,7 +90,7 @@ export const apiClient = {
   obtenerVenta: (id) =>
     request(`/ventas/${id}`),
 
-  // Facturación Electrónica SRI
+  // Facturacion Electronica SRI
   emitirFactura: (facturaPayload) =>
     request('/invoices/emitir', { method: 'POST', body: JSON.stringify(facturaPayload) }),
 
@@ -81,7 +106,7 @@ export const apiClient = {
       body: JSON.stringify(payload),
     }),
 
-  // Notas de Crédito SRI (Devoluciones)
+  // Notas de Credito SRI (Devoluciones)
   emitirNotaCredito: (ncPayload) =>
     request('/credit-notes/emitir', {
       method: 'POST',
@@ -90,9 +115,8 @@ export const apiClient = {
 
   descargarRide: async (claveAcceso) => {
     const baseUrl = getBaseUrl().replace(/\/$/, '');
-    const apiKey = getApiKey();
     const res = await fetch(`${baseUrl}/invoices/${encodeURIComponent(claveAcceso)}/ride`, {
-      headers: { 'x-api-key': apiKey },
+      credentials: 'include',
     });
     if (!res.ok) throw new ApiError('Error al descargar RIDE PDF', res.status);
     const blob = await res.blob();
@@ -108,9 +132,8 @@ export const apiClient = {
 
   descargarXml: async (claveAcceso) => {
     const baseUrl = getBaseUrl().replace(/\/$/, '');
-    const apiKey = getApiKey();
     const res = await fetch(`${baseUrl}/invoices/${encodeURIComponent(claveAcceso)}/xml`, {
-      headers: { 'x-api-key': apiKey },
+      credentials: 'include',
     });
     if (!res.ok) throw new ApiError('Error al descargar XML firmado', res.status);
     const blob = await res.blob();
@@ -124,4 +147,3 @@ export const apiClient = {
     setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
   },
 };
-

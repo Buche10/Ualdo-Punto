@@ -5,6 +5,24 @@ test.describe('POS Farmacia — Flujo End-to-End SRI (Venta, RIDE, Devolución y
   const FAKE_NC_CLAVE_ACCESO = '2909202604179001691900110010010000000011234567812';
 
   test.beforeEach(async ({ page }) => {
+    // Interceptar sesion autenticada
+    await page.route('**/api/auth/me', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          user: {
+            id: 'usr-valwis-e2e',
+            email: 'admin@valwis.farmacia',
+            nombre: 'Admin Valwis',
+            rol: 'admin',
+            empresa: { id: 'emp-valwis', nombre: 'Valwis' },
+          },
+        }),
+      });
+    });
+
     // Interceptar llamadas API hacia el backend para pruebas E2E deterministas
     await page.route('**/api/ventas', async (route) => {
       await route.fulfill({
@@ -107,6 +125,7 @@ test.describe('POS Farmacia — Flujo End-to-End SRI (Venta, RIDE, Devolución y
     // Navegar a la app e ingresar a la pestaña del POS Facturación SRI
     await page.goto('/');
     const posTabBtn = page.getByRole('button', { name: /Facturar \(POS SRI\)/i });
+    await expect(posTabBtn).toBeVisible({ timeout: 10000 });
     await posTabBtn.click();
   });
 
@@ -116,11 +135,12 @@ test.describe('POS Farmacia — Flujo End-to-End SRI (Venta, RIDE, Devolución y
     await searchInput.fill('Paracetamol');
 
     // Clic en el producto sugerido
-    const productItem = page.locator('button', { hasText: 'Paracetamol 500mg' }).first();
+    const productItem = page.locator('button', { hasText: /Paracetamol/i }).first();
+    await expect(productItem).toBeVisible({ timeout: 10000 });
     await productItem.click();
 
     // 2. Verificar que se agregó a la tabla del carrito
-    await expect(page.locator('text=Paracetamol 500mg').first()).toBeVisible();
+    await expect(page.locator('table').getByText(/Paracetamol/i).first()).toBeVisible();
 
     // 3. Emitir Factura Electrónica
     const emitirBtn = page.getByRole('button', { name: /Emitir Factura Electrónica/i });

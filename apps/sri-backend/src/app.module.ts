@@ -8,6 +8,7 @@ import { InvoicesModule } from './modules/invoices/invoices.module';
 import { SalesModule } from './modules/sales/sales.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { CreditNotesModule } from './modules/credit-notes/credit-notes.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -26,6 +27,7 @@ import { AppController } from './app.controller';
     SalesModule,
     CustomersModule,
     CreditNotesModule,
+    AuthModule,
   ],
   providers: [
     {

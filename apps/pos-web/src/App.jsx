@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Package, FileSpreadsheet, Calendar, Pill, RotateCcw, Smartphone, Sun, Moon, Download, Upload, Trash2, ReceiptText } from 'lucide-react';
+import { Camera, Package, FileSpreadsheet, Calendar, RotateCcw, Smartphone, Sun, Moon, Download, Upload, ReceiptText, LogOut } from 'lucide-react';
 import { QuickCount } from './components/QuickCount';
 import { StockDashboard } from './components/StockDashboard';
 import { AuditReport } from './components/AuditReport';
 import { BatchManagement } from './components/BatchManagement';
 import { SalesScreen } from './components/sales/SalesScreen';
+import { LoginScreen } from './components/auth/LoginScreen';
+import { apiClient, setOnUnauthorized } from './api/apiClient';
 import {
   loadProducts, saveProducts,
   loadBatches, saveBatches,
-  loadAuditLogs, saveAuditLogs,
+  loadAuditLogs,
   resetInventoryToDefaults,
   exportInventoryJSON, importInventoryJSON
 } from './utils/storage';
@@ -25,6 +27,8 @@ import {
 } from './utils/cloudSync';
 
 export function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [activeTab, setActiveTab] = useState('quick-count');
   const [products, setProducts] = useState([]);
   const [batches, setBatches] = useState([]);
@@ -42,12 +46,37 @@ export function App() {
     }
   }, [isDarkMode]);
 
-  // Cargar datos: desde la nube (Supabase) si está configurada, o desde localStorage
+  // Verificar sesion activa al cargar la aplicacion
   useEffect(() => {
+    setOnUnauthorized(() => {
+      setCurrentUser(null);
+    });
+
+    const checkSession = async () => {
+      try {
+        const res = await apiClient.obtenerUsuarioActual();
+        if (res?.success && res?.user) {
+          setCurrentUser(res.user);
+        } else {
+          setCurrentUser(null);
+        }
+      } catch {
+        setCurrentUser(null);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkSession();
+  }, []);
+
+  // Cargar datos: desde la nube (Supabase) si hay sesion y esta configurada, o desde localStorage
+  useEffect(() => {
+    if (!currentUser) return;
+
     let unsubscribe = () => {};
 
     const init = async () => {
-      // Los logs de auditoría permanecen locales (aún no se sincronizan)
       setAuditLogs(loadAuditLogs());
 
       if (!isCloudEnabled) {
@@ -57,18 +86,14 @@ export function App() {
       }
 
       try {
-        // En modo nube se usa exactamente lo que haya en Supabase.
-        // Si está vacío, la app arranca vacía para levantar el inventario real
-        // escaneando (no se inyecta el catálogo de demostración).
         const { products: cloudProducts, batches: cloudBatches } = await fetchAll();
 
         setProducts(cloudProducts);
         setBatches(cloudBatches);
-        saveProducts(cloudProducts); // caché local por si se pierde la conexión
+        saveProducts(cloudProducts);
         saveBatches(cloudBatches);
         setCloudStatus('online');
 
-        // Escuchar cambios de otros dispositivos en tiempo real
         unsubscribe = subscribeToChanges(async () => {
           try {
             const fresh = await fetchAll();
@@ -90,7 +115,7 @@ export function App() {
 
     init();
     return () => unsubscribe();
-  }, []);
+  }, [currentUser]);
 
   // Propaga una escritura a la nube (sin bloquear la UI). Marca error si falla.
   const pushToCloud = (fn) => {
@@ -296,6 +321,31 @@ export function App() {
     });
   };
 
+  const handleLogout = async () => {
+    try {
+      await apiClient.logout();
+    } catch (e) {
+      console.error('Error al cerrar sesion:', e);
+    } finally {
+      setCurrentUser(null);
+    }
+  };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-[var(--ualdo-pizarra)] text-white font-sans">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-8 h-8 border-2 border-[var(--ualdo-aqua)] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-gray-300">Cargando sesion de Ualdo Negocios...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return <LoginScreen onLoginSuccess={(user) => setCurrentUser(user)} />;
+  }
+
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-[var(--bg)] text-white' : 'bg-[var(--bg)] text-[var(--text)]'} font-sans flex flex-col transition-colors duration-200`}>
       
@@ -316,11 +366,13 @@ export function App() {
                 POS
               </span>
             </h1>
-            <p className="text-[11px] text-[var(--text-muted)] hidden sm:block">Punto de Venta y Control de Inventarios</p>
+            <p className="text-[11px] text-[var(--text-muted)] hidden sm:block">
+              {currentUser?.empresa?.nombre ? `Farmacia ${currentUser.empresa.nombre}` : 'Farmacia Valwis'}
+            </p>
           </div>
         </div>
 
-        {/* Botones de Acción Header */}
+        {/* Botones de Accion Header */}
         <div className="flex items-center gap-2 sm:gap-3">
 
           {/* Indicador de estado de la nube */}
@@ -385,6 +437,26 @@ export function App() {
           >
             {isDarkMode ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-[var(--ualdo-petroleo)]" />}
           </button>
+
+          {/* Informacion de Usuario y Logout */}
+          <div className="flex items-center gap-2 border-l border-[var(--border)] pl-2 sm:pl-3">
+            <div className="hidden md:flex flex-col items-end text-right">
+              <span className="text-xs font-semibold text-[var(--text)]">
+                {currentUser?.nombre || currentUser?.email}
+              </span>
+              <span className="text-[10px] text-[var(--ualdo-aqua)] font-medium">
+                {currentUser?.empresa?.nombre || 'Valwis'} ({currentUser?.rol || 'operador'})
+              </span>
+            </div>
+            <button
+              onClick={handleLogout}
+              title="Cerrar sesion"
+              className="btn-pill-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Cerrar sesion</span>
+            </button>
+          </div>
         </div>
       </header>
 

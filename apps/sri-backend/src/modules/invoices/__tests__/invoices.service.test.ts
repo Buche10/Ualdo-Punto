@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InvoicesService, EmitirFacturaDto } from '../invoices.service';
-import { BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('InvoicesService (Orquestación del Pipeline de Facturación SRI)', () => {
   let service: InvoicesService;

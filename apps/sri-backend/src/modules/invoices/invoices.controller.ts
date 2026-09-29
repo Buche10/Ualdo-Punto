@@ -2,14 +2,14 @@ import { Controller, Post, Get, Body, Param, Res, HttpStatus, UseGuards } from '
 import type { Response } from 'express';
 import { InvoicesService, EmitirFacturaDto } from './invoices.service';
 import { calculateInvoiceTotals, createSuccessResponse, CartItem } from '@pharmastock/shared';
-import { ApiKeyGuard } from '../../common/guards/api-key.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('invoices')
 export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
 
   @Post('emitir')
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(JwtAuthGuard)
   public async emitirFactura(@Body() dto: EmitirFacturaDto) {
     const factura = await this.invoicesService.emitirFactura(dto);
     return createSuccessResponse(factura);
@@ -22,14 +22,14 @@ export class InvoicesController {
   }
 
   @Get('pendientes')
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(JwtAuthGuard)
   public async consultarVentasPendientes() {
     const pendientes = await this.invoicesService.consultarVentasSinFacturaAutorizada();
     return createSuccessResponse(pendientes);
   }
 
   @Post('reemitir/:ventaId')
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(JwtAuthGuard)
   public async reemitirFactura(
     @Param('ventaId') ventaId: string,
     @Body() body: any,
@@ -45,7 +45,7 @@ export class InvoicesController {
   }
 
   @Post(':claveAcceso/enviar-email')
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(JwtAuthGuard)
   public async enviarEmail(
     @Param('claveAcceso') claveAcceso: string,
     @Body() body: { email?: string },

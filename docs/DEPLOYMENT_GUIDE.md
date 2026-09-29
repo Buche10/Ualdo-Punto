@@ -59,8 +59,9 @@ Para plataformas como Render, Railway o Fly.io que gestionan secretos mediante v
 | `SRI_P12_PASSWORD` | String | Contraseña de la firma electrónica | `TuClaveSegura2026!` |
 | `SUPABASE_URL` | URL | URL del proyecto Supabase | `https://xxxx.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | String | Clave `service_role` de Supabase (acceso backend) | `eyJhbGci...` |
-| `POS_API_KEY` | String | Clave compartida entre el POS y el backend | `pharmastock-pos-secure-key-2026` |
-| `FRONTEND_URL` | URL | URL pública del POS (para CORS) | `https://pharmastock.netlify.app` |
+| `JWT_SECRET` | String | Secreto para firma y validación de tokens JWT de sesión (mínimo 32 caracteres) | `mi_secreto_super_seguro_produccion_2026` |
+| `POS_API_KEY` | String | Clave para llamadas internas de servicio backend a backend (mínimo 32 caracteres) | `clave_interna_servicio_backend_2026` |
+| `FRONTEND_URL` | URL | URL pública del POS (para CORS) | `https://pos.negocios.ualdocorp.com` |
 | `SMTP_HOST` | Host (opcional) | Servidor SMTP para envío de facturas | `smtp.gmail.com` |
 | `SMTP_PORT` | Número | Puerto SMTP | `587` |
 | `SMTP_USER` | String | Usuario o correo emisor | `facturacion@farmacia.com` |

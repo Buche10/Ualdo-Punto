@@ -1,42 +1,56 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const logger = new Logger('SRI-Backend');
 
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    logger.error('CRITICO: JWT_SECRET no definida o menor a 32 caracteres. Abortando inicio.');
+    process.exit(1);
+  }
+
   if (!process.env.POS_API_KEY) {
     if (process.env.NODE_ENV === 'production' || process.env.SRI_AMBIENTE === '2') {
-      logger.error('CRÍTICO: POS_API_KEY no definida en entorno de producción. Abortando inicio.');
+      logger.error('CRITICO: POS_API_KEY no definida en entorno de produccion. Abortando inicio.');
       process.exit(1);
     } else {
       logger.warn('ADVERTENCIA: POS_API_KEY no definida. Configure la variable en su archivo .env');
     }
   }
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  app.set('trust proxy', 1);
+  app.use(cookieParser());
+
+  const isProd = process.env.NODE_ENV === 'production';
   const allowedOrigins = [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'http://localhost:4173',
     process.env.FRONTEND_URL,
+    ...(!isProd ? ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:4173'] : []),
   ].filter(Boolean) as string[];
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Permitir requests sin origin (scripts locales o llamadas server-to-server)
-      if (!origin) return callback(null, true);
+      if (!origin) {
+        if (isProd) {
+          logger.warn('CORS bloqueado: peticion sin origin en produccion');
+          return callback(new Error('Origen no permitido por politica CORS'));
+        }
+        return callback(null, true);
+      }
 
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         logger.warn(`CORS bloqueado para origen no autorizado: ${origin}`);
-        callback(new Error('Origen no permitido por política CORS'));
+        callback(new Error('Origen no permitido por politica CORS'));
       }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     credentials: true,
   });
 
@@ -44,7 +58,7 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3001;
   await app.listen(port);
-  logger.log(`Servidor de Facturación SRI corriendo en http://localhost:${port}/api`);
+  logger.log(`Servidor de Facturacion SRI corriendo en http://localhost:${port}/api`);
 }
 
 bootstrap();

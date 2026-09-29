@@ -1,11 +1,11 @@
 import { Controller, Get, Post, Query, Body, UseGuards, UsePipes } from '@nestjs/common';
 import { CustomersService } from './customers.service';
-import { ApiKeyGuard } from '../../common/guards/api-key.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { CustomerSchema, Customer, createSuccessResponse } from '@pharmastock/shared';
 
 @Controller('clientes')
-@UseGuards(ApiKeyGuard)
+@UseGuards(JwtAuthGuard)
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
