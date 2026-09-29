@@ -1,10 +1,12 @@
 import { ISriComprobanteRepository, SriJobRecord } from '../sri-queue.processor';
 import { SriComprobanteEstado, SriJobEstado } from '@pharmastock/shared';
-import { GuardarComprobanteInput, ComprobanteDbRecord } from '../sri-comprobante.types';
+import { GuardarComprobanteInput, ComprobanteDbRecord, GuardarNotaCreditoDetalleInput } from '../sri-comprobante.types';
 
 export class InMemorySriComprobanteRepository implements ISriComprobanteRepository {
   public readonly comprobantes = new Map<string, ComprobanteDbRecord>();
   public readonly jobs = new Map<string, SriJobRecord & { proximoIntento: Date; ultimoError?: string; updatedAt: Date }>();
+  public readonly detallesNotaCredito: Array<GuardarNotaCreditoDetalleInput & { id: string; stock_reintegrado: boolean }> = [];
+  public readonly llamadasReintegro: string[] = [];
   private secuencialCounter = 1;
 
   public async obtenerSiguienteSecuencial(_tipoDoc: string, _estab: string, _ptoEmi: string): Promise<string> {
@@ -137,5 +139,37 @@ export class InMemorySriComprobanteRepository implements ISriComprobanteReposito
       }
     }
     return rescatados;
+  }
+
+  public async guardarDetallesNotaCredito(detalles: GuardarNotaCreditoDetalleInput[]): Promise<boolean> {
+    for (const d of detalles) {
+      this.detallesNotaCredito.push({
+        ...d,
+        id: `nc-det-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        stock_reintegrado: false,
+      });
+    }
+    return true;
+  }
+
+  public async reintegrarStockNotaCredito(comprobanteId: string): Promise<boolean> {
+    this.llamadasReintegro.push(comprobanteId);
+    const comp = this.obtenerComprobantePorIdSync(comprobanteId);
+    if (!comp) {
+      throw new Error(`COMPROBANTE_NO_ENCONTRADO: ${comprobanteId}`);
+    }
+    if (comp.estado !== 'AUTORIZADO') {
+      throw new Error(`COMPROBANTE_NO_AUTORIZADO: No se puede reintegrar stock de un comprobante en estado ${comp.estado}`);
+    }
+    if (comp.stock_reintegrado) {
+      return true; // Idempotente
+    }
+    comp.stock_reintegrado = true;
+    for (const det of this.detallesNotaCredito) {
+      if (det.comprobanteId === comprobanteId) {
+        det.stock_reintegrado = true;
+      }
+    }
+    return true;
   }
 }

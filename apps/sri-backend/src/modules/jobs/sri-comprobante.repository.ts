@@ -2,9 +2,9 @@ import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common
 import { SupabaseService } from '../database/supabase.service';
 import { ISriComprobanteRepository, SriJobRecord } from './sri-queue.processor';
 import { SriComprobanteEstado, SriEnvironment, SriJobEstado } from '@pharmastock/shared';
-import { GuardarComprobanteInput, ComprobanteDbRecord } from './sri-comprobante.types';
+import { GuardarComprobanteInput, ComprobanteDbRecord, GuardarNotaCreditoDetalleInput } from './sri-comprobante.types';
 
-export { GuardarComprobanteInput, ComprobanteDbRecord };
+export { GuardarComprobanteInput, ComprobanteDbRecord, GuardarNotaCreditoDetalleInput };
 
 @Injectable()
 export class SriComprobanteRepository implements ISriComprobanteRepository {
@@ -327,10 +327,7 @@ export class SriComprobanteRepository implements ISriComprobanteRepository {
 
     const { error } = await client
       .from('comprobantes')
-      .update({
-        mensajes_sri: mensajesPrevios,
-        updated_at: new Date().toISOString(),
-      })
+      .update({ mensajes_sri: mensajesPrevios, updated_at: new Date().toISOString() })
       .eq('id', comprobanteId);
 
     if (error) {
@@ -338,5 +335,45 @@ export class SriComprobanteRepository implements ISriComprobanteRepository {
       return false;
     }
     return true;
+  }
+
+  public async guardarDetallesNotaCredito(detalles: GuardarNotaCreditoDetalleInput[]): Promise<boolean> {
+    if (!detalles || detalles.length === 0) return true;
+    const client = this.supabaseService.getClientOrThrow();
+    const rows = detalles.map((d) => ({
+      comprobante_id: d.comprobanteId,
+      producto_id: d.productoId,
+      codigo_principal: d.codigoPrincipal || null,
+      descripcion: d.descripcion,
+      cantidad: d.cantidad,
+      precio_unitario: d.precioUnitario,
+      descuento: d.descuento || 0,
+      precio_total_sin_impuesto: d.precioTotalSinImpuesto,
+      codigo_impuesto: d.codigoImpuesto || '2',
+      codigo_porcentaje: d.codigoPorcentaje,
+      tarifa: d.tarifa,
+      valor_iva: d.valorIva,
+      stock_reintegrado: false,
+    }));
+
+    const { error } = await client.from('nota_credito_detalle').insert(rows);
+    if (error) {
+      this.logger.error(`Error persistiendo detalles de nota de crédito: ${error.message}`);
+      throw new InternalServerErrorException(`Error al guardar detalles de nota de crédito: ${error.message}`);
+    }
+    return true;
+  }
+
+  public async reintegrarStockNotaCredito(comprobanteId: string): Promise<boolean> {
+    const client = this.supabaseService.getClientOrThrow();
+    const { data, error } = await client.rpc('reintegrar_stock_nota_credito', {
+      p_comprobante_id: comprobanteId,
+    });
+
+    if (error) {
+      this.logger.error(`Error crítico en RPC reintegrar_stock_nota_credito (${comprobanteId}): ${error.message}`);
+      throw new InternalServerErrorException(`Fallo al reintegrar stock de nota de crédito: ${error.message}`);
+    }
+    return Boolean(data);
   }
 }

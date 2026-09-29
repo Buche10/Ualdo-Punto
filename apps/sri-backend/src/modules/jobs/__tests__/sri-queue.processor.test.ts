@@ -170,4 +170,113 @@ describe('SriQueueProcessor (Cola de trabajos SRI y Contingencia)', () => {
       }),
     );
   });
+
+  it('debe invocar reintegrarStockNotaCredito cuando un comprobante tipo 04 (Nota de Crédito) pasa a AUTORIZADO', async () => {
+    const mockSoapClient = {
+      enviarComprobante: vi.fn().mockResolvedValue({ estado: 'RECIBIDA', mensajes: [] }),
+      consultarAutorizacion: vi.fn().mockResolvedValue({
+        estado: 'AUTORIZADO',
+        numeroAutorizacion: '2809202604179001691900110010010000000011234567812',
+        fechaAutorizacion: '2026-09-28T18:30:00-05:00',
+        xmlComprobante: '<notaCredito></notaCredito>',
+        mensajes: [],
+      }),
+    };
+
+    const mockRepo = {
+      actualizarComprobante: vi.fn().mockResolvedValue(true),
+      actualizarJob: vi.fn().mockResolvedValue(true),
+      reintegrarStockNotaCredito: vi.fn().mockResolvedValue(true),
+    };
+
+    const processor = new SriQueueProcessor(mockSoapClient as any, mockRepo as any);
+
+    const job: SriJobRecord = {
+      id: 'job-nc-1',
+      comprobanteId: 'comp-nc-1',
+      // Tipo '04' en posiciones 8-9: 28092026 04 1790016919001...
+      claveAcceso: '2809202604179001691900110010010000000011234567812',
+      xmlFirmado: '<notaCredito>firmado</notaCredito>',
+      ambiente: '1',
+      estadoActualComprobante: 'FIRMADO',
+      intentos: 0,
+      maxIntentos: 3,
+    };
+
+    const res = await processor.procesarJob(job);
+    expect(res.exito).toBe(true);
+    expect(mockRepo.reintegrarStockNotaCredito).toHaveBeenCalledWith('comp-nc-1');
+  });
+
+  it('NO debe invocar el reintegro de stock si la Nota de Crédito queda en NO_AUTORIZADO', async () => {
+    const mockSoapClient = {
+      enviarComprobante: vi.fn().mockResolvedValue({ estado: 'RECIBIDA', mensajes: [] }),
+      consultarAutorizacion: vi.fn().mockResolvedValue({
+        estado: 'NO AUTORIZADO',
+        mensajes: [{ mensaje: 'Error de firma' }],
+      }),
+    };
+
+    const mockRepo = {
+      actualizarComprobante: vi.fn().mockResolvedValue(true),
+      actualizarJob: vi.fn().mockResolvedValue(true),
+      reintegrarStockNotaCredito: vi.fn().mockResolvedValue(true),
+    };
+
+    const processor = new SriQueueProcessor(mockSoapClient as any, mockRepo as any);
+
+    const job: SriJobRecord = {
+      id: 'job-nc-2',
+      comprobanteId: 'comp-nc-2',
+      claveAcceso: '2809202604179001691900110010010000000011234567812',
+      xmlFirmado: '<notaCredito>firmado</notaCredito>',
+      ambiente: '1',
+      estadoActualComprobante: 'FIRMADO',
+      intentos: 0,
+      maxIntentos: 3,
+    };
+
+    const res = await processor.procesarJob(job);
+    expect(res.exito).toBe(false);
+    expect(mockRepo.actualizarComprobante).toHaveBeenCalledWith(
+      'comp-nc-2',
+      expect.objectContaining({ estado: 'NO_AUTORIZADO' }),
+    );
+    expect(mockRepo.reintegrarStockNotaCredito).not.toHaveBeenCalled();
+  });
+
+  it('NO debe invocar reintegrarStockNotaCredito si el comprobante autorizado es una Factura (tipo 01)', async () => {
+    const mockSoapClient = {
+      enviarComprobante: vi.fn().mockResolvedValue({ estado: 'RECIBIDA', mensajes: [] }),
+      consultarAutorizacion: vi.fn().mockResolvedValue({
+        estado: 'AUTORIZADO',
+        numeroAutorizacion: '2809202601179001691900110010010000000011234567818',
+        mensajes: [],
+      }),
+    };
+
+    const mockRepo = {
+      actualizarComprobante: vi.fn().mockResolvedValue(true),
+      actualizarJob: vi.fn().mockResolvedValue(true),
+      reintegrarStockNotaCredito: vi.fn().mockResolvedValue(true),
+    };
+
+    const processor = new SriQueueProcessor(mockSoapClient as any, mockRepo as any);
+
+    const job: SriJobRecord = {
+      id: 'job-fact-1',
+      comprobanteId: 'comp-fact-1',
+      // Tipo '01'
+      claveAcceso: '2809202601179001691900110010010000000011234567818',
+      xmlFirmado: '<factura></factura>',
+      ambiente: '1',
+      estadoActualComprobante: 'FIRMADO',
+      intentos: 0,
+      maxIntentos: 3,
+    };
+
+    const res = await processor.procesarJob(job);
+    expect(res.exito).toBe(true);
+    expect(mockRepo.reintegrarStockNotaCredito).not.toHaveBeenCalled();
+  });
 });

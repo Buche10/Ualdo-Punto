@@ -44,6 +44,29 @@ export class CreditNotesService {
       );
     }
 
+    // 1.1. Recuperar detalles originales de venta para mapear producto_id real
+    let detallesVentaOriginal: Array<{
+      producto_id: string;
+      codigo_principal: string;
+      descripcion: string;
+      cantidad: number;
+    }> = [];
+
+    if (facturaDb.venta_id) {
+      try {
+        const client = this.supabaseService.getClientOrThrow();
+        const { data, error } = await client
+          .from('venta_detalle')
+          .select('producto_id, codigo_principal, descripcion, cantidad')
+          .eq('venta_id', facturaDb.venta_id);
+        if (!error && Array.isArray(data)) {
+          detallesVentaOriginal = data;
+        }
+      } catch (dbErr: any) {
+        this.logger.warn(`No se pudieron cargar detalles de venta_detalle para venta ${facturaDb.venta_id}: ${dbErr.message}`);
+      }
+    }
+
     // 2. Extraer datos de la factura original desde su XML firmado/generado
     const xmlFactura = facturaDb.xml_firmado || facturaDb.xml_generado;
     if (!xmlFactura) {
@@ -73,8 +96,9 @@ export class CreditNotesService {
         ? [facturaNode.detalles.detalle]
         : [];
 
-    // 3. Determinar los ítems a devolver y validar cantidades
+    // 3. Determinar los ítems a devolver y validar cantidades mapeando producto_id real
     const itemsDevolucion: Array<{
+      productoId: string;
       codigo: string;
       descripcion: string;
       cantidad: number;
@@ -103,9 +127,17 @@ export class CreditNotesService {
           ? itemOrig.impuestos.impuesto[0]
           : itemOrig.impuestos?.impuesto;
 
+        const codPrincipal = String(itemOrig.codigoPrincipal || itemOrig.codigoInterno || itemDto.codigo);
+        const desc = String(itemOrig.descripcion || '');
+        const matchDetalle = detallesVentaOriginal.find(
+          (vd) => vd.codigo_principal === codPrincipal || vd.producto_id === codPrincipal || vd.descripcion === desc,
+        );
+        const realProductoId = matchDetalle ? matchDetalle.producto_id : codPrincipal;
+
         itemsDevolucion.push({
-          codigo: String(itemOrig.codigoPrincipal || itemOrig.codigoInterno),
-          descripcion: String(itemOrig.descripcion || ''),
+          productoId: realProductoId,
+          codigo: codPrincipal,
+          descripcion: desc,
           cantidad: itemDto.cantidad,
           precioUnitario: Number(itemOrig.precioUnitario || 0),
           descuento: Number(itemOrig.descuento || 0) * (itemDto.cantidad / cantOrig),
@@ -120,9 +152,17 @@ export class CreditNotesService {
           ? itemOrig.impuestos.impuesto[0]
           : itemOrig.impuestos?.impuesto;
 
+        const codPrincipal = String(itemOrig.codigoPrincipal || itemOrig.codigoInterno || '');
+        const desc = String(itemOrig.descripcion || '');
+        const matchDetalle = detallesVentaOriginal.find(
+          (vd) => vd.codigo_principal === codPrincipal || vd.producto_id === codPrincipal || vd.descripcion === desc,
+        );
+        const realProductoId = matchDetalle ? matchDetalle.producto_id : codPrincipal;
+
         itemsDevolucion.push({
-          codigo: String(itemOrig.codigoPrincipal || itemOrig.codigoInterno || ''),
-          descripcion: String(itemOrig.descripcion || ''),
+          productoId: realProductoId,
+          codigo: codPrincipal,
+          descripcion: desc,
           cantidad: Number(itemOrig.cantidad || 0),
           precioUnitario: Number(itemOrig.precioUnitario || 0),
           descuento: Number(itemOrig.descuento || 0),
@@ -145,18 +185,8 @@ export class CreditNotesService {
     }));
     const totales = calculateInvoiceTotals(cartItems);
 
-    // 5. Reintegrar stock atómicamente si existe conexión a Supabase
-    try {
-      const client = this.supabaseService.getClientOrThrow();
-      for (const it of itemsDevolucion) {
-        await client.rpc('reintegrar_stock', {
-          p_producto_id: it.codigo,
-          p_cantidad: it.cantidad,
-        });
-      }
-    } catch (stockErr: any) {
-      this.logger.warn(`No se pudo ejecutar reintegro atómico de stock: ${stockErr.message}`);
-    }
+    // 5. El reintegro de stock se ejecutará transaccional e idempotentemente
+    //    al AUTORIZARSE el comprobante ante el SRI en el SriQueueProcessor (A2).
 
     // 6. Obtener secuencial atómico para Nota de Crédito (tipoDoc '04')
     const estab = dto.establecimiento || infoTrib.estab || '001';
@@ -197,7 +227,10 @@ export class CreditNotesService {
       dirMatriz: String(infoTrib.dirMatriz || 'Av. Amazonas y Colón'),
       dirEstablecimiento: String(infoFact.dirEstablecimiento || infoTrib.dirMatriz || 'Av. Amazonas y Colón'),
       obligadoContabilidad: (infoFact.obligadoContabilidad || 'SI') as 'SI' | 'NO',
-      regimenRimpe: infoTrib.contribuyenteRimpe ? String(infoTrib.contribuyenteRimpe) : undefined,
+      regimenMicroempresas: infoTrib.regimenMicroempresas ? String(infoTrib.regimenMicroempresas) : undefined,
+      regimenRimpe: infoTrib.regimenRimpe ? String(infoTrib.regimenRimpe) : undefined,
+      agenteRetencion: infoTrib.agenteRetencion ? String(infoTrib.agenteRetencion) : undefined,
+      contribuyenteRimpe: infoTrib.contribuyenteRimpe ? String(infoTrib.contribuyenteRimpe) : undefined,
       fechaEmision: fechaEmisionStr,
       comprador: {
         tipoIdentificacion: String(infoFact.tipoIdentificacionComprador || '05'),
@@ -253,7 +286,7 @@ export class CreditNotesService {
       throw new BadRequestException(`Fallo crítico al firmar Nota de Crédito: ${err.message}`);
     }
 
-    // 10. Persistir en comprobantes con tipo '04'
+    // 10. Persistir en comprobantes con tipo '04' y guardar líneas con producto_id real
     const comprobanteGuardado = await this.sriRepository.guardarComprobante({
       tipoComprobante: '04',
       claveAcceso,
@@ -266,6 +299,29 @@ export class CreditNotesService {
       ambiente,
       ventaId: facturaDb.venta_id,
     });
+
+    if (this.sriRepository.guardarDetallesNotaCredito) {
+      await this.sriRepository.guardarDetallesNotaCredito(
+        itemsDevolucion.map((it) => {
+          const itemSinImp = round2(it.cantidad * it.precioUnitario - it.descuento);
+          const valorIva = it.tarifaIva > 0 ? round2(itemSinImp * (it.tarifaIva / 100)) : 0;
+          return {
+            comprobanteId: comprobanteGuardado.id,
+            productoId: it.productoId,
+            codigoPrincipal: it.codigo,
+            descripcion: it.descripcion,
+            cantidad: it.cantidad,
+            precioUnitario: it.precioUnitario,
+            descuento: it.descuento,
+            precioTotalSinImpuesto: itemSinImp,
+            codigoImpuesto: '2',
+            codigoPorcentaje: it.codigoPorcentajeIva,
+            tarifa: it.tarifaIva,
+            valorIva,
+          };
+        }),
+      );
+    }
 
     // 11. Encolar y despachar en cola asíncrona SRI
     const job = await this.sriRepository.crearSriJob(comprobanteGuardado.id);

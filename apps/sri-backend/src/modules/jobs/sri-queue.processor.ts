@@ -37,6 +37,7 @@ export interface ISriComprobanteRepository {
     }
   ): Promise<boolean>;
   registrarLogEnvio?(id: string, log: Record<string, unknown>): Promise<boolean>;
+  reintegrarStockNotaCredito?(comprobanteId: string): Promise<boolean>;
 }
 
 @Injectable()
@@ -113,6 +114,12 @@ export class SriQueueProcessor {
       xmlFirmado: resAuth.xmlComprobante,
     });
     await this.repository.actualizarJob(job.id, 'EXITOSO', {});
+
+    // Si el comprobante es Nota de Crédito ('04'), reintegrar stock transaccional e idempotente
+    const tipoComprobante = job.claveAcceso.substring(8, 10);
+    if (tipoComprobante === '04' && this.repository.reintegrarStockNotaCredito) {
+      await this.repository.reintegrarStockNotaCredito(job.comprobanteId);
+    }
 
     // Disparo con confirmación y registro de entrega de RIDE y XML por correo
     await this.dispararEnvioEmail(job, resAuth);

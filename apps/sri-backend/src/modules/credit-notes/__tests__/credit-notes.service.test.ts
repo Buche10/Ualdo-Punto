@@ -21,6 +21,7 @@ describe('CreditNotesService (Fase 5 - Emisión de Notas de Crédito / Devolucio
     obtenerComprobantePorClave: vi.fn(),
     obtenerSiguienteSecuencial: vi.fn().mockResolvedValue('000000005'),
     guardarComprobante: vi.fn().mockResolvedValue({ id: 'nc-uuid-1' }),
+    guardarDetallesNotaCredito: vi.fn().mockResolvedValue(true),
     crearSriJob: vi.fn().mockResolvedValue({ id: 'nc-job-1' }),
   };
 
@@ -28,10 +29,27 @@ describe('CreditNotesService (Fase 5 - Emisión de Notas de Crédito / Devolucio
     despacharInmediato: vi.fn().mockResolvedValue(undefined),
   };
 
-  const mockSupabaseService = {
-    getClientOrThrow: vi.fn().mockReturnValue({
-      rpc: vi.fn().mockResolvedValue({ data: 10, error: null }),
+  const mockSupabaseClient = {
+    rpc: vi.fn().mockResolvedValue({ data: 10, error: null }),
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({
+          data: [
+            {
+              producto_id: 'real-prod-uuid-123',
+              codigo_principal: 'MED-01',
+              descripcion: 'Paracetamol 500mg',
+              cantidad: 2,
+            },
+          ],
+          error: null,
+        }),
+      }),
     }),
+  };
+
+  const mockSupabaseService = {
+    getClientOrThrow: vi.fn().mockReturnValue(mockSupabaseClient),
   };
 
   const xmlFacturaOriginal = `
@@ -183,6 +201,19 @@ describe('CreditNotesService (Fase 5 - Emisión de Notas de Crédito / Devolucio
         ventaId: 'venta-uuid-1',
       }),
     );
+
+    // A1: Se guardan líneas de Nota de Crédito con producto_id real desde venta_detalle
+    expect(mockSriRepository.guardarDetallesNotaCredito).toHaveBeenCalledWith([
+      expect.objectContaining({
+        comprobanteId: 'nc-uuid-1',
+        productoId: 'real-prod-uuid-123',
+        codigoPrincipal: 'MED-01',
+        cantidad: 1,
+      }),
+    ]);
+
+    // A2: El reintegro de stock NO se ejecuta prematuramente en emisión
+    expect(mockSupabaseClient.rpc).not.toHaveBeenCalledWith('reintegrar_stock', expect.anything());
 
     // Encolado y despacho en worker asíncrono
     expect(mockSriRepository.crearSriJob).toHaveBeenCalledWith('nc-uuid-1');

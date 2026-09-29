@@ -26,4 +26,38 @@ export interface ComprobanteDbRecord {
   num_autorizacion?: string;
   fecha_autorizacion?: string;
   mensajes_sri?: unknown[];
+  stock_reintegrado?: boolean;
+}
+
+export interface GuardarNotaCreditoDetalleInput {
+  comprobanteId: string;
+  productoId: string;
+  codigoPrincipal?: string;
+  descripcion: string;
+  cantidad: number;
+  precioUnitario: number;
+  descuento: number;
+  precioTotalSinImpuesto: number;
+  codigoImpuesto?: string;
+  codigoPorcentaje: string;
+  tarifa: number;
+  valorIva: number;
+}
+
+export interface NotaCreditoDetalleDbRecord {
+  id: string;
+  comprobante_id: string;
+  producto_id: string;
+  codigo_principal?: string;
+  descripcion: string;
+  cantidad: number;
+  precio_unitario: number;
+  descuento: number;
+  precio_total_sin_impuesto: number;
+  codigo_impuesto: string;
+  codigo_porcentaje: string;
+  tarifa: number;
+  valor_iva: number;
+  stock_reintegrado: boolean;
+  created_at: string;
 }
