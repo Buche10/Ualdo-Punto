@@ -2,6 +2,14 @@ export interface CasoCertificacion {
   id: string;
   nombre: string;
   descripcion: string;
+  tipoComprobante?: '01' | '04';
+  motivo?: string;
+  documentoModificado?: {
+    codDoc: '01';
+    numDoc: string;
+    fechaEmision: string;
+    claveAcceso: string;
+  };
   comprador: {
     tipoIdentificacion: '04' | '05' | '06' | '07' | '08';
     identificacion: string;
@@ -181,6 +189,45 @@ export const CASOS_CERTIFICACION_SRI: CasoCertificacion[] = [
       subtotal15: 20.00,
       totalIva: 3.00, // 20.00 * 0.15
       importeTotal: 35.00,
+    },
+  },
+  {
+    id: 'CASO-05',
+    nombre: 'Nota de Crédito v1.1.0 (Devolución Parcial de Factura)',
+    descripcion: 'Nota de Crédito electrónica asociada a factura autorizada, devolviendo 1 unidad de insumo al 15% IVA.',
+    tipoComprobante: '04',
+    documentoModificado: {
+      codDoc: '01',
+      numDoc: '001-001-000000001',
+      fechaEmision: '28/09/2026',
+      claveAcceso: '2809202601179001691900110010010000000011234567818',
+    },
+    motivo: 'DEVOLUCIÓN POR PRODUCTO DEFECTUOSO',
+    comprador: {
+      tipoIdentificacion: '05',
+      identificacion: '1710034065',
+      razonSocial: 'MARIA CARMEN LOPEZ',
+      direccion: 'Cumbayá, Quito',
+      email: 'mlopez@outlook.com',
+    },
+    items: [
+      {
+        codigo: 'INS-02',
+        descripcion: 'Termómetro Digital Infrarrojo',
+        cantidad: 1,
+        precioUnitario: 25.00,
+        descuento: 5.00,
+        tarifaIva: 15,
+        codigoPorcentajeIva: '4',
+      },
+    ],
+    formaPagoCodigo: '01',
+    resultadoEsperado: {
+      estado: 'AUTORIZADO',
+      subtotal0: 0.00,
+      subtotal15: 20.00,
+      totalIva: 3.00,
+      importeTotal: 23.00,
     },
   },
 ];

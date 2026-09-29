@@ -133,5 +133,88 @@ describe('XmlBuilderService (Generación XML Factura v2.1.0 SRI)', () => {
     expect(posDirMatriz).toBeGreaterThan(posClaveAcceso);
     expect(posRimpe).toBeGreaterThan(posDirMatriz);
   });
+
+  it('A3: debe generar Nota de Crédito declarando versión 1.1.0 con orden canónico XSD y soporte RIMPE', () => {
+    const xmlNc = service.buildNotaCreditoXml({
+      ambiente: '1',
+      tipoEmision: '1',
+      razonSocial: 'FARMACIA PHARMASTOCK S.A.',
+      nombreComercial: 'PHARMASTOCK',
+      ruc: '1790016919001',
+      claveAcceso: '2809202604179001691900110010010000000011234567812',
+      codDoc: '04',
+      estab: '001',
+      ptoEmi: '001',
+      secuencial: '000000001',
+      dirMatriz: 'Av. Amazonas y Colón',
+      dirEstablecimiento: 'Av. Amazonas y Colón',
+      obligadoContabilidad: 'SI',
+      regimenRimpe: 'CONTRIBUYENTE RÉGIMEN RIMPE',
+      contribuyenteRimpe: 'CONTRIBUYENTE RÉGIMEN RIMPE',
+      fechaEmision: '28/09/2026',
+      comprador: {
+        tipoIdentificacion: '05',
+        razonSocial: 'JUAN PEREZ',
+        identificacion: '1710034065',
+      },
+      documentoModificado: {
+        codDoc: '01',
+        numDoc: '001-001-000000042',
+        fechaEmision: '22/09/2026',
+        claveAcceso: '2209202601179001691900110010010000000011234567818',
+      },
+      motivo: 'DEVOLUCIÓN DE MEDICAMENTO',
+      items: [
+        {
+          codigoInterno: 'MED-01',
+          descripcion: 'Paracetamol 500mg',
+          cantidad: 1,
+          precioUnitario: 5.0,
+          descuento: 0,
+          precioTotalSinImpuesto: 5.0,
+          codigoImpuesto: '2',
+          codigoPorcentaje: '0',
+          tarifa: 0,
+          valorIva: 0,
+        },
+      ],
+      totales: {
+        subtotal0: 5.0,
+        subtotal15: 0,
+        totalSinImpuestos: 5.0,
+        totalDescuento: 0,
+        totalIva: 0,
+        propina: 0,
+        importeTotal: 5.0,
+        impuestosDetalle: [
+          {
+            codigo: '2',
+            codigoPorcentaje: '0',
+            tarifa: 0,
+            baseImponible: 5.0,
+            valor: 0,
+          },
+        ],
+      },
+    });
+
+    expect(xmlNc).toContain('<notaCredito id="comprobante" version="1.1.0">');
+    expect(xmlNc).toContain('<codDoc>04</codDoc>');
+    expect(xmlNc).toContain('<codDocModificado>01</codDocModificado>');
+    expect(xmlNc).toContain('<numDocModificado>001-001-000000042</numDocModificado>');
+    expect(xmlNc).toContain('<fechaEmisionDocSustento>22/09/2026</fechaEmisionDocSustento>');
+    expect(xmlNc).toContain('<totalSinImpuestos>5.00</totalSinImpuestos>');
+    expect(xmlNc).toContain('<valorModificacion>5.00</valorModificacion>');
+    expect(xmlNc).toContain('<motivo>DEVOLUCIÓN DE MEDICAMENTO</motivo>');
+    expect(xmlNc).toContain('<codigoInterno>MED-01</codigoInterno>');
+
+    // Verificar orden canónico de infoTributaria
+    const posDirMatriz = xmlNc.indexOf('<dirMatriz>');
+    const posRimpe = xmlNc.indexOf('<regimenRimpe>');
+    const posContribRimpe = xmlNc.indexOf('<contribuyenteRimpe>');
+    expect(posDirMatriz).toBeGreaterThan(-1);
+    expect(posRimpe).toBeGreaterThan(posDirMatriz);
+    expect(posContribRimpe).toBeGreaterThan(posRimpe);
+  });
 });
 

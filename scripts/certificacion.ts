@@ -2,8 +2,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as dotenv from 'dotenv';
 import { CASOS_CERTIFICACION_SRI } from './certificacion-casos';
-import { validarFacturaContraXsdOficial } from './certificacion-validator';
-import { XmlBuilderService, FacturaXmlData } from '../apps/sri-backend/src/modules/sri/xml-builder.service';
+import { validarFacturaContraXsdOficial, validarNotaCreditoContraXsdOficial } from './certificacion-validator';
+import { XmlBuilderService, FacturaXmlData, NotaCreditoXmlData } from '../apps/sri-backend/src/modules/sri/xml-builder.service';
 import { AccessKeyService } from '../apps/sri-backend/src/modules/sri/access-key.service';
 import { XmlSignerService } from '../apps/sri-backend/src/modules/sri/xml-signer.service';
 import { SriSoapClientService } from '../apps/sri-backend/src/modules/sri/sri-soap-client.service';
@@ -41,11 +41,12 @@ async function runCertificacion() {
     console.log(`---------------------------------------------------------------`);
     console.log(`[${caso.id}] ${caso.nombre}`);
 
+    const tipoComprobante = caso.tipoComprobante || '01';
     const secuencial = String(secuencialNum++).padStart(9, '0');
     const fecha = new Date();
     const claveAcceso = accessKeyService.generarClaveAcceso({
       fechaEmision: fecha,
-      tipoComprobante: '01',
+      tipoComprobante,
       ruc: rucEmisor,
       ambiente,
       establecimiento: '001',
@@ -69,60 +70,118 @@ async function runCertificacion() {
     const pad = (n: number) => n.toString().padStart(2, '0');
     const fechaEmisionStr = `${pad(fecha.getDate())}/${pad(fecha.getMonth() + 1)}/${fecha.getFullYear()}`;
 
-    const xmlData: FacturaXmlData = {
-      ambiente,
-      tipoEmision: '1',
-      razonSocial: 'FARMACIA PHARMASTOCK EXPRESS CIA. LTDA.',
-      nombreComercial: 'PHARMASTOCK EXPRESS',
-      ruc: rucEmisor,
-      claveAcceso,
-      codDoc: '01',
-      estab: '001',
-      ptoEmi: '001',
-      secuencial,
-      dirMatriz: 'Av. Amazonas N24-15 y Colón, Quito',
-      dirEstablecimiento: 'Av. Amazonas N24-15 y Colón, Quito',
-      obligadoContabilidad: 'SI',
-      regimenRimpe: 'CONTRIBUYENTE RÉGIMEN RIMPE',
-      fechaEmision: fechaEmisionStr,
-      comprador: caso.comprador,
-      items: caso.items.map((it) => {
-        const base = round2(Math.max(0, it.cantidad * it.precioUnitario - it.descuento));
-        return {
-          codigoPrincipal: it.codigo,
-          descripcion: it.descripcion,
-          cantidad: it.cantidad,
-          precioUnitario: it.precioUnitario,
-          descuento: it.descuento,
-          precioTotalSinImpuesto: base,
-          codigoImpuesto: '2',
-          codigoPorcentaje: it.codigoPorcentajeIva,
-          tarifa: it.tarifaIva,
-          valorIva: it.tarifaIva > 0 ? round2(base * (it.tarifaIva / 100)) : 0,
-        };
-      }),
-      totales,
-      pagos: [{ formaPago: caso.formaPagoCodigo, total: totales.importeTotal }],
-    };
+    let xmlGenerado = '';
+    let validacion: { valid: boolean; errors: string[] };
 
-    const xmlGenerado = xmlBuilder.buildFacturaXml(xmlData);
+    if (tipoComprobante === '04') {
+      const docSustento = caso.documentoModificado || {
+        codDoc: '01' as const,
+        numDoc: '001-001-000000001',
+        fechaEmision: '28/09/2026',
+        claveAcceso: '2809202601179001691900110010010000000011234567818',
+      };
+
+      const ncData: NotaCreditoXmlData = {
+        ambiente,
+        tipoEmision: '1',
+        razonSocial: 'FARMACIA PHARMASTOCK EXPRESS CIA. LTDA.',
+        nombreComercial: 'PHARMASTOCK EXPRESS',
+        ruc: rucEmisor,
+        claveAcceso,
+        codDoc: '04',
+        estab: '001',
+        ptoEmi: '001',
+        secuencial,
+        dirMatriz: 'Av. Amazonas N24-15 y Colón, Quito',
+        dirEstablecimiento: 'Av. Amazonas N24-15 y Colón, Quito',
+        obligadoContabilidad: 'SI',
+        regimenRimpe: 'CONTRIBUYENTE RÉGIMEN RIMPE',
+        contribuyenteRimpe: 'CONTRIBUYENTE RÉGIMEN RIMPE',
+        fechaEmision: fechaEmisionStr,
+        comprador: caso.comprador,
+        documentoModificado: docSustento,
+        motivo: caso.motivo || 'DEVOLUCIÓN DE MERCADERÍA',
+        items: caso.items.map((it) => {
+          const base = round2(Math.max(0, it.cantidad * it.precioUnitario - it.descuento));
+          return {
+            codigoInterno: it.codigo,
+            descripcion: it.descripcion,
+            cantidad: it.cantidad,
+            precioUnitario: it.precioUnitario,
+            descuento: it.descuento,
+            precioTotalSinImpuesto: base,
+            codigoImpuesto: '2',
+            codigoPorcentaje: it.codigoPorcentajeIva,
+            tarifa: it.tarifaIva,
+            valorIva: it.tarifaIva > 0 ? round2(base * (it.tarifaIva / 100)) : 0,
+          };
+        }),
+        totales,
+      };
+
+      xmlGenerado = xmlBuilder.buildNotaCreditoXml(ncData);
+      validacion = await validarNotaCreditoContraXsdOficial(xmlGenerado);
+    } else {
+      const xmlData: FacturaXmlData = {
+        ambiente,
+        tipoEmision: '1',
+        razonSocial: 'FARMACIA PHARMASTOCK EXPRESS CIA. LTDA.',
+        nombreComercial: 'PHARMASTOCK EXPRESS',
+        ruc: rucEmisor,
+        claveAcceso,
+        codDoc: '01',
+        estab: '001',
+        ptoEmi: '001',
+        secuencial,
+        dirMatriz: 'Av. Amazonas N24-15 y Colón, Quito',
+        dirEstablecimiento: 'Av. Amazonas N24-15 y Colón, Quito',
+        obligadoContabilidad: 'SI',
+        regimenRimpe: 'CONTRIBUYENTE RÉGIMEN RIMPE',
+        fechaEmision: fechaEmisionStr,
+        comprador: caso.comprador,
+        items: caso.items.map((it) => {
+          const base = round2(Math.max(0, it.cantidad * it.precioUnitario - it.descuento));
+          return {
+            codigoPrincipal: it.codigo,
+            descripcion: it.descripcion,
+            cantidad: it.cantidad,
+            precioUnitario: it.precioUnitario,
+            descuento: it.descuento,
+            precioTotalSinImpuesto: base,
+            codigoImpuesto: '2',
+            codigoPorcentaje: it.codigoPorcentajeIva,
+            tarifa: it.tarifaIva,
+            valorIva: it.tarifaIva > 0 ? round2(base * (it.tarifaIva / 100)) : 0,
+          };
+        }),
+        totales,
+        pagos: [{ formaPago: caso.formaPagoCodigo, total: totales.importeTotal }],
+      };
+
+      xmlGenerado = xmlBuilder.buildFacturaXml(xmlData);
+      validacion = await validarFacturaContraXsdOficial(xmlGenerado);
+    }
 
     // 1. Validación estricta con libxml2 contra el esquema oficial XSD del SRI
-    const validacion = await validarFacturaContraXsdOficial(xmlGenerado);
     if (!validacion.valid) {
       console.error(`❌ [XSD RECHAZO] En ${caso.id}:`);
       validacion.errors.forEach((e) => console.error(`   - ${e}`));
       fallidos++;
       continue;
     }
-    console.log(`✓ Validación XSD Oficial SRI (factura_V2.1.0.xsd): APROBADA`);
+    const schemaLabel = tipoComprobante === '04' ? 'NotaCredito_V1.1.0.xsd' : 'factura_V2.1.0.xsd';
+    console.log(`✓ Validación XSD Oficial SRI (${schemaLabel}): APROBADA`);
 
     // 2. Firma digital si el certificado está provisto
     let xmlFinal = xmlGenerado;
     let firmado = false;
     if (certPath && fs.existsSync(certPath) && certPassword) {
       try {
-        xmlFinal = xmlSigner.firmarFacturaXml(xmlGenerado, { p12Path: certPath, p12Password: certPassword });
+        if (tipoComprobante === '04') {
+          xmlFinal = xmlSigner.firmarNotaCreditoXml(xmlGenerado, { p12Path: certPath, p12Password: certPassword });
+        } else {
+          xmlFinal = xmlSigner.firmarFacturaXml(xmlGenerado, { p12Path: certPath, p12Password: certPassword });
+        }
         firmado = true;
         console.log(`✓ Firma digital XAdES-BES completada.`);
       } catch (err: any) {

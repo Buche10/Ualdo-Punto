@@ -97,7 +97,10 @@ export interface NotaCreditoXmlData {
   dirEstablecimiento?: string;
   contribuyenteEspecial?: string;
   obligadoContabilidad: 'SI' | 'NO';
+  regimenMicroempresas?: string;
   regimenRimpe?: string;
+  agenteRetencion?: string;
+  contribuyenteRimpe?: string;
   fechaEmision: string; // dd/mm/aaaa
   comprador: {
     tipoIdentificacion: string;
@@ -289,7 +292,7 @@ export class XmlBuilderService {
     const rootObj: Record<string, unknown> = {
       notaCredito: {
         '@id': 'comprobante',
-        '@version': '1.0.0',
+        '@version': '1.1.0',
         infoTributaria: {
           ambiente: data.ambiente,
           tipoEmision: data.tipoEmision,
@@ -302,7 +305,10 @@ export class XmlBuilderService {
           ptoEmi: data.ptoEmi,
           secuencial: data.secuencial,
           dirMatriz: data.dirMatriz,
+          ...(data.regimenMicroempresas ? { regimenMicroempresas: data.regimenMicroempresas } : {}),
           ...(data.regimenRimpe ? { regimenRimpe: data.regimenRimpe } : {}),
+          ...(data.agenteRetencion ? { agenteRetencion: data.agenteRetencion } : {}),
+          ...(data.contribuyenteRimpe ? { contribuyenteRimpe: data.contribuyenteRimpe } : {}),
         },
         infoNotaCredito: {
           fechaEmision: data.fechaEmision,
