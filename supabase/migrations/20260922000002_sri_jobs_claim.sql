@@ -68,7 +68,7 @@ BEGIN
 END;
 $$;
 
--- 3. Función para reclamar un job específico por ID (evita doble despacho cron ↔ inmediato)
+-- 3. Función para reclamar un job específico por ID (evita doble despacho entre cron e inmediato)
 CREATE OR REPLACE FUNCTION public.reclamar_job_por_id(p_job_id UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql

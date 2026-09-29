@@ -164,13 +164,13 @@ async function runCertificacion() {
 
     // 1. Validación estricta con libxml2 contra el esquema oficial XSD del SRI
     if (!validacion.valid) {
-      console.error(`❌ [XSD RECHAZO] En ${caso.id}:`);
+      console.error(`[ERROR] [XSD RECHAZO] En ${caso.id}:`);
       validacion.errors.forEach((e) => console.error(`   - ${e}`));
       fallidos++;
       continue;
     }
     const schemaLabel = tipoComprobante === '04' ? 'NotaCredito_V1.1.0.xsd' : 'factura_V2.1.0.xsd';
-    console.log(`✓ Validación XSD Oficial SRI (${schemaLabel}): APROBADA`);
+    console.log(`[OK] Validación XSD Oficial SRI (${schemaLabel}): APROBADA`);
 
     // 2. Firma digital si el certificado está provisto
     let xmlFinal = xmlGenerado;
@@ -183,21 +183,21 @@ async function runCertificacion() {
           xmlFinal = xmlSigner.firmarFacturaXml(xmlGenerado, { p12Path: certPath, p12Password: certPassword });
         }
         firmado = true;
-        console.log(`✓ Firma digital XAdES-BES completada.`);
+        console.log(`[OK] Firma digital XAdES-BES completada.`);
       } catch (err: any) {
-        console.warn(`⚠️ Error en firma .p12: ${err.message}`);
+        console.warn(`[AVISO] Error en firma .p12: ${err.message}`);
       }
     }
 
     // 3. Transmisión real al Web Service del SRI si está firmado
     let estadoFinalSri = 'PENDIENTE_TRANSMISION';
     if (firmado) {
-      console.log(`→ Transmitiendo a Web Service SRI Recepción...`);
+      console.log(`-> Transmitiendo a Web Service SRI Recepción...`);
       const recepcion = await soapClient.enviarComprobante(xmlFinal, ambiente);
       console.log(`  Respuesta Recepción: ${recepcion.estado}`);
 
       if (recepcion.estado === 'RECIBIDA') {
-        console.log(`→ Consultando Autorización SRI...`);
+        console.log(`-> Consultando Autorización SRI...`);
         await new Promise((resolve) => setTimeout(resolve, 3000));
         const autorizacion = await soapClient.consultarAutorizacion(claveAcceso, ambiente);
         console.log(`  Respuesta Autorización: ${autorizacion.estado}`);
@@ -213,9 +213,9 @@ async function runCertificacion() {
     // 4. Guardar artefacto XML
     const xmlFile = path.join(outputDir, `${caso.id}_${claveAcceso}.xml`);
     fs.writeFileSync(xmlFile, xmlFinal, 'utf8');
-    console.log(`✓ Archivo: ${path.basename(xmlFile)}`);
-    console.log(`✓ Totales: Sub0: $${totales.subtotal0} | Sub15: $${totales.subtotal15} | IVA: $${totales.totalIva} | TOTAL: $${totales.importeTotal}`);
-    console.log(`✅ [ESTADO] XSD: VÁLIDO | SRI: ${firmado ? estadoFinalSri : 'SIMULADO (Requiere .p12 para envío SOAP)'}\n`);
+    console.log(`[OK] Archivo: ${path.basename(xmlFile)}`);
+    console.log(`[OK] Totales: Sub0: $${totales.subtotal0} | Sub15: $${totales.subtotal15} | IVA: $${totales.totalIva} | TOTAL: $${totales.importeTotal}`);
+    console.log(`[OK] [ESTADO] XSD: VÁLIDO | SRI: ${firmado ? estadoFinalSri : 'SIMULADO (Requiere .p12 para envío SOAP)'}\n`);
     aprobados++;
   }
 

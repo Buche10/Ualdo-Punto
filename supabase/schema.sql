@@ -35,7 +35,7 @@ alter publication supabase_realtime add table public.batches;
 -- Permisos (RLS)
 -- ---------------------------------------------------------------------
 -- Se habilita RLS y se permite acceso completo con la clave pública `anon`.
--- ⚠️ Esto significa que cualquiera con la URL + la clave anón puede leer y
+-- AVISO: Esto significa que cualquiera con la URL + la clave anón puede leer y
 --    escribir. Es aceptable para una herramienta interna cuya URL no se
 --    comparte públicamente. Para producción con varios usuarios se recomienda
 --    añadir autenticación (Supabase Auth) y restringir estas políticas.

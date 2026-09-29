@@ -8,7 +8,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('❌ Error: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY son requeridos en apps/sri-backend/.env');
+  console.error('[ERROR] SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY son requeridos en apps/sri-backend/.env');
   process.exit(1);
 }
 
@@ -52,7 +52,7 @@ export async function configurarEmisor(config: EmisorConfigInput) {
     .maybeSingle();
 
   if (errConsulta) {
-    console.error(`❌ Error consultando tabla emisor: ${errConsulta.message}`);
+    console.error(`[ERROR] Al consultar tabla emisor: ${errConsulta.message}`);
     process.exit(1);
   }
 
@@ -76,11 +76,11 @@ export async function configurarEmisor(config: EmisorConfigInput) {
       .update(emisorPayload)
       .eq('id', emisorExistente.id);
     if (errUpd) throw errUpd;
-    console.log(`✓ Registro de emisor actualizado en base de datos.`);
+    console.log(`[OK] Registro de emisor actualizado en base de datos.`);
   } else {
     const { error: errIns } = await supabase.from('emisor').insert(emisorPayload);
     if (errIns) throw errIns;
-    console.log(`✓ Registro de emisor insertado en base de datos.`);
+    console.log(`[OK] Registro de emisor insertado en base de datos.`);
   }
 
   // 2. Asegurar establecimiento
@@ -93,7 +93,7 @@ export async function configurarEmisor(config: EmisorConfigInput) {
       activo: true,
     }, { onConflict: 'codigo' });
   if (errEstab) throw errEstab;
-  console.log(`✓ Establecimiento ${config.establecimientoCodigo} verificado.`);
+  console.log(`[OK] Establecimiento ${config.establecimientoCodigo} verificado.`);
 
   // 3. Asegurar punto de emisión
   const { error: errPto } = await supabase
@@ -105,7 +105,7 @@ export async function configurarEmisor(config: EmisorConfigInput) {
       activo: true,
     }, { onConflict: 'establecimiento_codigo,codigo' });
   if (errPto) throw errPto;
-  console.log(`✓ Punto de emisión ${config.establecimientoCodigo}-${config.puntoEmisionCodigo} verificado.`);
+  console.log(`[OK] Punto de emisión ${config.establecimientoCodigo}-${config.puntoEmisionCodigo} verificado.`);
 
   // 4. Inicializar secuenciales si no existen
   for (const tipoDoc of ['01', '04']) {
@@ -118,9 +118,9 @@ export async function configurarEmisor(config: EmisorConfigInput) {
       }, { onConflict: 'tipo_doc,cod_establecimiento,cod_punto_emision', ignoreDuplicates: true });
     if (errSec) console.warn(`Aviso en secuencial ${tipoDoc}: ${errSec.message}`);
   }
-  console.log(`✓ Secuenciales (01 Factura, 04 Nota de Crédito) garantizados.`);
+  console.log(`[OK] Secuenciales (01 Factura, 04 Nota de Crédito) garantizados.`);
 
-  console.log('\n✅ Configuración de emisor completada exitosamente.');
+  console.log('\n[OK] Configuración de emisor completada exitosamente.');
 }
 
 // Ejecución directa por CLI
@@ -146,7 +146,7 @@ if (require.main === module || process.argv[1]?.includes('seed-emisor')) {
     establecimientoCodigo: '001',
     puntoEmisionCodigo: '001',
   }).catch((err) => {
-    console.error('❌ Error configurando emisor:', err.message);
+    console.error('[ERROR] Al configurar emisor:', err.message);
     process.exit(1);
   });
 }

@@ -212,7 +212,7 @@ export class CreditNotesService {
     const pad = (n: number) => n.toString().padStart(2, '0');
     const fechaEmisionStr = `${pad(fechaActual.getDate())}/${pad(fechaActual.getMonth() + 1)}/${fechaActual.getFullYear()}`;
 
-    // 8. Construir XML de la Nota de Crédito v1.0.0
+    // 8. Construir XML de la Nota de Crédito v1.1.0
     const xmlNcData: NotaCreditoXmlData = {
       ambiente,
       tipoEmision: '1',

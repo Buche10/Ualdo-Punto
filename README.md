@@ -23,16 +23,16 @@ Sin configurar nada, la app funciona con `localStorage` (datos por dispositivo).
 
 ### 1. Crea el proyecto
 1. Entra a [supabase.com](https://supabase.com) y crea una cuenta (gratis).
-2. **New project** → ponle nombre y una contraseña de base de datos → **Create**.
+2. **New project**, ponle nombre y una contraseña de base de datos, y pulsa **Create**.
 3. Espera ~1 minuto a que se aprovisione.
 
 ### 2. Crea las tablas
-1. En el menú lateral: **SQL Editor → New query**.
+1. En el menú lateral: **SQL Editor** y luego **New query**.
 2. Abre el archivo [`supabase/schema.sql`](supabase/schema.sql) de este repo, copia todo su
    contenido, pégalo y presiona **Run**. Esto crea las tablas, activa el tiempo real y los permisos.
 
 ### 3. Conecta la app
-1. En Supabase: **Project Settings → API** (o **Data API**).
+1. En Supabase: **Project Settings** y luego **API** (o **Data API**).
 2. Copia **Project URL** y la clave **anon public**.
 3. En la raíz del proyecto, copia `.env.example` como `.env` y pega los valores:
    ```
@@ -41,7 +41,7 @@ Sin configurar nada, la app funciona con `localStorage` (datos por dispositivo).
    ```
 4. `npm run build` (o reinicia `npm run dev`).
 
-Cuando esté activo, el indicador del header mostrará **🟢 Nube**. Cualquier conteo,
+Cuando esté activo, el indicador del header mostrará **Nube**. Cualquier conteo,
 alta o borrado se replica al instante en todos los dispositivos conectados.
 
 > **Nota de seguridad:** la clave `anon` viaja en el bundle del front (es pública por
@@ -60,4 +60,4 @@ El escáner de cámara **requiere HTTPS**. La forma más simple:
 
 Si usas Supabase, define las mismas variables `VITE_SUPABASE_URL` y
 `VITE_SUPABASE_ANON_KEY` en la configuración de entorno del hosting (en Netlify:
-**Site settings → Environment variables**) para que el sitio publicado también sincronice.
+**Site settings** y luego **Environment variables**) para que el sitio publicado también sincronice.

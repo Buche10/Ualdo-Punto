@@ -142,7 +142,7 @@ Para plataformas como Render, Railway o Fly.io que gestionan secretos mediante v
 
 1. **Crear recurso en Coolify:**
    - En el dashboard de Coolify (Hetzner), diríjase a su proyecto / ambiente.
-   - Haga clic en **+ New Resource** → **Public/Private Repository** (GitHub o GitLab).
+   - Haga clic en **+ New Resource** y luego **Public/Private Repository** (GitHub o GitLab).
    - Indique la URL del repositorio y la rama (ej. `main` o `fix/sri-invoicing-hardening`).
 2. **Configuración de Build:**
    - **Build Pack:** `Dockerfile`
@@ -188,11 +188,11 @@ Para plataformas como Render, Railway o Fly.io que gestionan secretos mediante v
 Una vez que el backend esté en línea y accesible vía HTTPS:
 
 1. Ingrese al panel de control de su sitio en [Netlify](https://app.netlify.com).
-2. Diríjase a: **Site configuration** → **Environment variables**.
+2. Diríjase a: **Site configuration** y luego **Environment variables**.
 3. Configure:
    - `VITE_BACKEND_URL`: URL del backend terminado en `/api` (ej. `https://pharmastock-sri-backend.onrender.com/api`).
    - `VITE_POS_API_KEY`: El mismo valor de `POS_API_KEY` configurado en el backend.
-4. Vuelva a desplegar el frontend (**Trigger deploy** → **Deploy site**).
+4. Vuelva a desplegar el frontend (**Trigger deploy** y luego **Deploy site**).
 
 ---
 

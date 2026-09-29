@@ -64,7 +64,7 @@ Cada XML generado se somete a validación contra las reglas oficiales de orden d
 ### 3.1 Solicitud en el Portal SRI en Línea
 
 1. Ingrese con el RUC y clave a [SRI en Línea](https://srienlinea.sri.gob.ec).
-2. Diríjase a: **Facturación Electrónica** → **Producción** → **Autorización**.
+2. Diríjase a: **Facturación Electrónica**, luego **Producción** y **Autorización**.
 3. Solicite la emisión en ambiente de producción. La aprobación suele ser inmediata para contribuyentes al día con sus obligaciones.
 
 ### 3.2 Corte de Configuración en el Servidor
@@ -94,4 +94,4 @@ POS_API_KEY=su_api_key_estacion_pos
    - Clave de acceso de 49 dígitos.
    - Número y fecha de autorización válida.
    - Código de barras y desglose tributario exacto.
-5. Ingrese a SRI en Línea → **Facturación Electrónica** → **Consultas** y verifique la factura emitida.
+5. Ingrese a SRI en Línea, sección **Facturación Electrónica**, **Consultas**, y verifique la factura emitida.
