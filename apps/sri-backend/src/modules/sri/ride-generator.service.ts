@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import PdfPrinter from 'pdfmake';
 import type { TDocumentDefinitions } from 'pdfmake/interfaces';
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const PdfPrinterModule = require('pdfmake');
+const PdfPrinter: any =
+  typeof PdfPrinterModule === 'function'
+    ? PdfPrinterModule
+    : (PdfPrinterModule.default || PdfPrinterModule);
 
 export interface RideFacturaData {
   emisor: {
@@ -54,7 +60,7 @@ export interface RideFacturaData {
 
 @Injectable()
 export class RideGeneratorService {
-  private printer: PdfPrinter;
+  private printer: InstanceType<typeof PdfPrinter>;
 
   constructor() {
     const fonts = {

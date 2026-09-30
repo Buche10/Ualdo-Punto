@@ -1,10 +1,21 @@
+# ==============================================================================
+# NOTA DE ARQUITECTURA / DESPLIEGUE:
+# El despliegue de produccion en Coolify utiliza UNA SOLA imagen Docker
+# (Dockerfile unificado: ghcr.io/buche10/ualdo-negocios:latest) servida en un unico
+# dominio (https://negocios.ualdocorp.com) y un solo puerto (3001).
+# El backend NestJS sirve tanto la API (/api) como el frontend estatico del POS (/).
+#
+# Este archivo docker-compose.coolify.yml queda conservado unicamente para
+# referencia o desarrollo local con servicios separados.
+# ==============================================================================
+
 services:
   pos-terminal:
     build:
       context: .
       dockerfile: Dockerfile.pos
     environment:
-      - VITE_API_URL=https://api-sri.negocios.ualdocorp.com/api
+      - VITE_API_URL=http://localhost:3001/api
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://localhost/"]
       interval: 30s
@@ -27,7 +38,7 @@ services:
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - POS_API_KEY=${POS_API_KEY}
       - JWT_SECRET=${JWT_SECRET}
-      - FRONTEND_URL=https://pos.negocios.ualdocorp.com
+      - FRONTEND_URL=https://negocios.ualdocorp.com
       - SRI_QUEUE_INTERVAL_SEC=5
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3001/api/health"]

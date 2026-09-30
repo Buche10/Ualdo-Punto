@@ -1,5 +1,6 @@
 # ==============================================================================
-# UALDO NEGOCIOS POS — TERMINAL PUNTO DE VENTA (PRODUCTION DOCKERFILE)
+# UALDO NEGOCIOS POS - TERMINAL PUNTO DE VENTA (PRODUCTION DOCKERFILE - LEGACY)
+# NOTA: Conservado para referencia. Produccion usa la imagen unica de la raiz.
 # Multi-stage build: Node.js 22 Alpine (Builder) + Nginx Alpine (Runner)
 # ==============================================================================
 

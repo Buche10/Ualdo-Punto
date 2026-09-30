@@ -1,6 +1,11 @@
-const getBaseUrl = () => {
-  const envUrl = typeof import.meta !== 'undefined' && (import.meta.env?.VITE_API_URL || import.meta.env?.VITE_BACKEND_URL);
-  return envUrl || 'http://localhost:3001/api';
+export const getBaseUrl = () => {
+  const envUrl = typeof import.meta !== 'undefined'
+    ? (import.meta.env?.VITE_BACKEND_URL || import.meta.env?.VITE_API_URL)
+    : undefined;
+  if (!envUrl || envUrl.trim() === '' || envUrl === '/api') {
+    return '/api';
+  }
+  return envUrl;
 };
 
 export class ApiError extends Error {

@@ -1,7 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import cookieParser from 'cookie-parser';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const cookieParser = require('cookie-parser');
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -24,7 +25,8 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.set('trust proxy', 1);
-  app.use(cookieParser());
+  const cookieParserFn = typeof cookieParser === 'function' ? cookieParser : (cookieParser as any)?.default;
+  app.use(cookieParserFn());
 
   const isProd = process.env.NODE_ENV === 'production';
   const allowedOrigins = [
@@ -35,14 +37,10 @@ async function bootstrap() {
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin) {
-        if (isProd) {
-          logger.warn('CORS bloqueado: peticion sin origin en produccion');
-          return callback(new Error('Origen no permitido por politica CORS'));
-        }
         return callback(null, true);
       }
 
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         logger.warn(`CORS bloqueado para origen no autorizado: ${origin}`);
