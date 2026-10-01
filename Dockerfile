@@ -19,8 +19,10 @@ COPY packages/shared/package*.json ./packages/shared/
 COPY apps/sri-backend/package*.json ./apps/sri-backend/
 COPY apps/pos-web/package*.json ./apps/pos-web/
 
-# Instalar todas las dependencias
-RUN npm ci
+# Instalar todas las dependencias, incluidas las de desarrollo (tsc, vite, nest cli).
+# Se fuerza --include=dev porque el entorno de build puede traer NODE_ENV=production,
+# que de otro modo haria que npm ci omita las devDependencies necesarias para compilar.
+RUN npm ci --include=dev
 
 # Copiar codigo fuente y esquemas
 COPY packages/shared ./packages/shared
