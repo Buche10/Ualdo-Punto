@@ -5,19 +5,15 @@ import * as bcrypt from 'bcryptjs';
 
 describe('AuthService', () => {
   let authService: AuthService;
-  let mockSupabaseService: any;
+  let mockDatabaseService: any;
   let mockJwtService: any;
-  let mockSupabaseClient: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockSupabaseClient = {
-      from: vi.fn(),
-    };
-
-    mockSupabaseService = {
-      getClient: vi.fn().mockReturnValue(mockSupabaseClient),
+    mockDatabaseService = {
+      query: vi.fn(),
+      isAvailable: vi.fn().mockReturnValue(true),
     };
 
     mockJwtService = {
@@ -25,7 +21,7 @@ describe('AuthService', () => {
       verifyAsync: vi.fn(),
     };
 
-    authService = new AuthService(mockSupabaseService, mockJwtService);
+    authService = new AuthService(mockDatabaseService, mockJwtService);
   });
 
   describe('validarCredenciales', () => {
@@ -48,22 +44,7 @@ describe('AuthService', () => {
         },
       };
 
-      const mockSelect = vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          maybeSingle: vi.fn().mockResolvedValue({ data: mockUsuario, error: null }),
-        }),
-      });
-
-      const mockUpdate = vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      });
-
-      mockSupabaseClient.from.mockImplementation((tabla: string) => {
-        if (tabla === 'usuarios') {
-          return { select: mockSelect, update: mockUpdate };
-        }
-        return {};
-      });
+      mockDatabaseService.query.mockResolvedValueOnce([mockUsuario]);
 
       const resultado = await authService.validarCredenciales('ADMIN@valwis.farmacia', passwordPlana);
 
@@ -75,16 +56,10 @@ describe('AuthService', () => {
     });
 
     it('debe lanzar 401 generico si el usuario no existe ejecutando dummy compare', async () => {
-      const mockSelect = vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-        }),
-      });
-
-      mockSupabaseClient.from.mockReturnValue({ select: mockSelect });
+      mockDatabaseService.query.mockResolvedValueOnce([]);
 
       await expect(
-        authService.validarCredenciales('desconocido@farmacia.com', 'clave123')
+        authService.validarCredenciales('desconocido@farmacia.com', 'clave123'),
       ).rejects.toThrow(new UnauthorizedException('Credenciales invalidas'));
     });
 
@@ -102,16 +77,10 @@ describe('AuthService', () => {
         empresas: { id: 'emp-valwis', nombre: 'Valwis', activo: true },
       };
 
-      const mockSelect = vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          maybeSingle: vi.fn().mockResolvedValue({ data: mockUsuario, error: null }),
-        }),
-      });
-
-      mockSupabaseClient.from.mockReturnValue({ select: mockSelect });
+      mockDatabaseService.query.mockResolvedValueOnce([mockUsuario]);
 
       await expect(
-        authService.validarCredenciales('operador@valwis.farmacia', 'claveIncorrecta')
+        authService.validarCredenciales('operador@valwis.farmacia', 'claveIncorrecta'),
       ).rejects.toThrow(new UnauthorizedException('Credenciales invalidas'));
     });
 
@@ -127,16 +96,10 @@ describe('AuthService', () => {
         empresas: { id: 'emp-valwis', nombre: 'Valwis', activo: true },
       };
 
-      const mockSelect = vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          maybeSingle: vi.fn().mockResolvedValue({ data: mockUsuario, error: null }),
-        }),
-      });
-
-      mockSupabaseClient.from.mockReturnValue({ select: mockSelect });
+      mockDatabaseService.query.mockResolvedValueOnce([mockUsuario]);
 
       await expect(
-        authService.validarCredenciales('inactivo@valwis.farmacia', 'clave123')
+        authService.validarCredenciales('inactivo@valwis.farmacia', 'clave123'),
       ).rejects.toThrow(new UnauthorizedException('Credenciales invalidas'));
     });
 
@@ -152,16 +115,10 @@ describe('AuthService', () => {
         empresas: { id: 'emp-valwis', nombre: 'Valwis', activo: false },
       };
 
-      const mockSelect = vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          maybeSingle: vi.fn().mockResolvedValue({ data: mockUsuario, error: null }),
-        }),
-      });
-
-      mockSupabaseClient.from.mockReturnValue({ select: mockSelect });
+      mockDatabaseService.query.mockResolvedValueOnce([mockUsuario]);
 
       await expect(
-        authService.validarCredenciales('operador@valwis.farmacia', 'clave123')
+        authService.validarCredenciales('operador@valwis.farmacia', 'clave123'),
       ).rejects.toThrow(new UnauthorizedException('Credenciales invalidas'));
     });
   });
@@ -186,7 +143,7 @@ describe('AuthService', () => {
         {
           issuer: 'ualdo-negocios',
           audience: 'ualdo-pos',
-        }
+        },
       );
     });
   });
@@ -203,13 +160,7 @@ describe('AuthService', () => {
         empresas: { id: 'emp-valwis', nombre: 'Valwis', ruc: '1790000000001', activo: true },
       };
 
-      const mockSelect = vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          maybeSingle: vi.fn().mockResolvedValue({ data: mockUsuario, error: null }),
-        }),
-      });
-
-      mockSupabaseClient.from.mockReturnValue({ select: mockSelect });
+      mockDatabaseService.query.mockResolvedValueOnce([mockUsuario]);
 
       const res = await authService.obtenerUsuarioActual('usr-123');
 

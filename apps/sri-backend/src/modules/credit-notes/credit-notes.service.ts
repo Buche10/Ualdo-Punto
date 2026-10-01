@@ -9,7 +9,7 @@ import { XmlBuilderService, NotaCreditoXmlData } from '../sri/xml-builder.servic
 import { XmlSignerService } from '../sri/xml-signer.service';
 import { SriComprobanteRepository } from '../jobs/sri-comprobante.repository';
 import { SriQueueWorker } from '../jobs/sri-queue.worker';
-import { SupabaseService } from '../database/supabase.service';
+import { DatabaseService } from '../database/database.service';
 import { calculateInvoiceTotals, round2, SriEnvironment, CartItem } from '@pharmastock/shared';
 import { EmitirNotaCreditoDto } from './credit-notes.dto';
 import { XMLParser } from 'fast-xml-parser';
@@ -24,15 +24,14 @@ export class CreditNotesService {
     private readonly xmlSignerService: XmlSignerService,
     private readonly sriRepository: SriComprobanteRepository,
     private readonly queueWorker: SriQueueWorker,
-    private readonly supabaseService: SupabaseService,
+    private readonly databaseService: DatabaseService,
   ) {}
 
   public async emitirNotaCredito(dto: EmitirNotaCreditoDto) {
     if (!dto.facturaClaveAcceso || dto.facturaClaveAcceso.trim().length !== 49) {
-      throw new BadRequestException('La clave de acceso de la factura original debe tener exactamente 49 dígitos.');
+      throw new BadRequestException('La clave de acceso de la factura original debe tener exactamente 49 digitos.');
     }
 
-    // 1. Obtener la factura original de la base de datos
     const facturaDb = await this.sriRepository.obtenerComprobantePorClave(dto.facturaClaveAcceso);
     if (!facturaDb) {
       throw new NotFoundException(`Factura original con clave ${dto.facturaClaveAcceso} no encontrada.`);
@@ -40,11 +39,10 @@ export class CreditNotesService {
 
     if (facturaDb.estado !== 'AUTORIZADO') {
       throw new BadRequestException(
-        `Solo se puede emitir una Nota de Crédito sobre una factura AUTORIZADA por el SRI. Estado actual: ${facturaDb.estado}`,
+        `Solo se puede emitir una Nota de Credito sobre una factura AUTORIZADA por el SRI. Estado actual: ${facturaDb.estado}`,
       );
     }
 
-    // 1.1. Recuperar detalles originales de venta para mapear producto_id real
     let detallesVentaOriginal: Array<{
       producto_id: string;
       codigo_principal: string;
@@ -54,12 +52,10 @@ export class CreditNotesService {
 
     if (facturaDb.venta_id) {
       try {
-        const client = this.supabaseService.getClientOrThrow();
-        const { data, error } = await client
-          .from('venta_detalle')
-          .select('producto_id, codigo_principal, descripcion, cantidad')
-          .eq('venta_id', facturaDb.venta_id);
-        if (!error && Array.isArray(data)) {
+        const sql =
+          'SELECT producto_id, codigo_principal, descripcion, cantidad FROM public.venta_detalle WHERE venta_id = $1';
+        const data = await this.databaseService.query(sql, [facturaDb.venta_id]);
+        if (Array.isArray(data)) {
           detallesVentaOriginal = data;
         }
       } catch (dbErr: any) {
@@ -67,10 +63,9 @@ export class CreditNotesService {
       }
     }
 
-    // 2. Extraer datos de la factura original desde su XML firmado/generado
     const xmlFactura = facturaDb.xml_firmado || facturaDb.xml_generado;
     if (!xmlFactura) {
-      throw new BadRequestException('El comprobante original no contiene XML para vincular la Nota de Crédito.');
+      throw new BadRequestException('El comprobante original no contiene XML para vincular la Nota de Credito.');
     }
 
     const parser = new XMLParser({
@@ -96,7 +91,6 @@ export class CreditNotesService {
         ? [facturaNode.detalles.detalle]
         : [];
 
-    // 3. Determinar los ítems a devolver y validar cantidades mapeando producto_id real
     const itemsDevolucion: Array<{
       productoId: string;
       codigo: string;
@@ -114,12 +108,12 @@ export class CreditNotesService {
           (d: any) => String(d.codigoPrincipal) === String(itemDto.codigo) || String(d.codigoInterno) === String(itemDto.codigo),
         );
         if (!itemOrig) {
-          throw new BadRequestException(`El ítem ${itemDto.codigo} no existe en la factura original.`);
+          throw new BadRequestException(`El item ${itemDto.codigo} no existe en la factura original.`);
         }
         const cantOrig = Number(itemOrig.cantidad || 0);
         if (itemDto.cantidad <= 0 || itemDto.cantidad > cantOrig) {
           throw new BadRequestException(
-            `Cantidad a devolver inválida para el ítem ${itemDto.codigo}. Cantidad factura: ${cantOrig}, solicitada: ${itemDto.cantidad}`,
+            `Cantidad a devolver invalida para el item ${itemDto.codigo}. Cantidad factura: ${cantOrig}, solicitada: ${itemDto.cantidad}`,
           );
         }
 
@@ -146,7 +140,6 @@ export class CreditNotesService {
         });
       }
     } else {
-      // Devolución total
       for (const itemOrig of rawDetalles) {
         const rawImpuesto = Array.isArray(itemOrig.impuestos?.impuesto)
           ? itemOrig.impuestos.impuesto[0]
@@ -172,7 +165,6 @@ export class CreditNotesService {
       }
     }
 
-    // 4. Calcular totales tributarios de la Nota de Crédito
     const cartItems: CartItem[] = itemsDevolucion.map((it, idx) => ({
       id: `nc-it-${idx}`,
       codigo: it.codigo,
@@ -185,15 +177,10 @@ export class CreditNotesService {
     }));
     const totales = calculateInvoiceTotals(cartItems);
 
-    // 5. El reintegro de stock se ejecutará transaccional e idempotentemente
-    //    al AUTORIZARSE el comprobante ante el SRI en el SriQueueProcessor (A2).
-
-    // 6. Obtener secuencial atómico para Nota de Crédito (tipoDoc '04')
     const estab = dto.establecimiento || infoTrib.estab || '001';
     const ptoEmi = dto.puntoEmision || infoTrib.ptoEmi || '001';
     const secuencial = await this.sriRepository.obtenerSiguienteSecuencial('04', estab, ptoEmi);
 
-    // 7. Generar Clave de Acceso para la Nota de Crédito (49 dígitos)
     const fechaActual = new Date();
     const ambiente = dto.ambiente || (infoTrib.ambiente as SriEnvironment) || (process.env.SRI_AMBIENTE as SriEnvironment) || '1';
     const ruc = String(infoTrib.ruc || process.env.SRI_RUC_EMISOR || '1790016919001');
@@ -212,7 +199,6 @@ export class CreditNotesService {
     const pad = (n: number) => n.toString().padStart(2, '0');
     const fechaEmisionStr = `${pad(fechaActual.getDate())}/${pad(fechaActual.getMonth() + 1)}/${fechaActual.getFullYear()}`;
 
-    // 8. Construir XML de la Nota de Crédito v1.1.0
     const xmlNcData: NotaCreditoXmlData = {
       ambiente,
       tipoEmision: '1',
@@ -224,8 +210,8 @@ export class CreditNotesService {
       estab,
       ptoEmi,
       secuencial,
-      dirMatriz: String(infoTrib.dirMatriz || 'Av. Amazonas y Colón'),
-      dirEstablecimiento: String(infoFact.dirEstablecimiento || infoTrib.dirMatriz || 'Av. Amazonas y Colón'),
+      dirMatriz: String(infoTrib.dirMatriz || 'Av. Amazonas y Colon'),
+      dirEstablecimiento: String(infoFact.dirEstablecimiento || infoTrib.dirMatriz || 'Av. Amazonas y Colon'),
       obligadoContabilidad: (infoFact.obligadoContabilidad || 'SI') as 'SI' | 'NO',
       regimenMicroempresas: infoTrib.regimenMicroempresas ? String(infoTrib.regimenMicroempresas) : undefined,
       regimenRimpe: infoTrib.regimenRimpe ? String(infoTrib.regimenRimpe) : undefined,
@@ -244,7 +230,7 @@ export class CreditNotesService {
         fechaEmision: fechaEmisionDocSustento,
         claveAcceso: dto.facturaClaveAcceso,
       },
-      motivo: dto.motivo || 'DEVOLUCIÓN DE MERCADERÍA',
+      motivo: dto.motivo || 'DEVOLUCION DE MERCADERIA',
       items: itemsDevolucion.map((it) => {
         const itemSinImp = round2(it.cantidad * it.precioUnitario - it.descuento);
         const valorIva = it.tarifaIva > 0 ? round2(itemSinImp * (it.tarifaIva / 100)) : 0;
@@ -266,12 +252,11 @@ export class CreditNotesService {
 
     const xmlGenerado = this.xmlBuilderService.buildNotaCreditoXml(xmlNcData);
 
-    // 9. Firma digital XAdES-BES
     const certPath = process.env.SRI_P12_PATH;
     const certBase64 = process.env.SRI_P12_BASE64;
     const certPassword = dto.certPassword || process.env.SRI_P12_PASSWORD;
     if ((!certPath && !certBase64) || !certPassword) {
-      throw new BadRequestException('Certificado digital .p12 (SRI_P12_PATH o SRI_P12_BASE64) o contraseña no configurados.');
+      throw new BadRequestException('Certificado digital .p12 (SRI_P12_PATH o SRI_P12_BASE64) o contrasena no configurados.');
     }
 
     let xmlFirmado: string;
@@ -282,11 +267,10 @@ export class CreditNotesService {
         p12Password: certPassword,
       });
     } catch (err: any) {
-      this.logger.error(`Error firmando Nota de Crédito: ${err.message}`);
-      throw new BadRequestException(`Fallo crítico al firmar Nota de Crédito: ${err.message}`);
+      this.logger.error(`Error firmando Nota de Credito: ${err.message}`);
+      throw new BadRequestException(`Fallo critico al firmar Nota de Credito: ${err.message}`);
     }
 
-    // 10. Persistir en comprobantes con tipo '04' y guardar líneas con producto_id real
     const comprobanteGuardado = await this.sriRepository.guardarComprobante({
       tipoComprobante: '04',
       claveAcceso,
@@ -323,7 +307,6 @@ export class CreditNotesService {
       );
     }
 
-    // 11. Encolar y despachar en cola asíncrona SRI
     const job = await this.sriRepository.crearSriJob(comprobanteGuardado.id);
     await this.queueWorker.despacharInmediato({
       id: job.id,
@@ -346,8 +329,8 @@ export class CreditNotesService {
       fechaEmision: fechaEmisionStr,
       totales,
       estado: 'FIRMADO',
-      ambiente: ambiente === '1' ? 'PRUEBAS' : 'PRODUCCIÓN',
-      mensaje: 'Nota de Crédito emitida y encolada para autorización ante el SRI.',
+      ambiente: ambiente === '1' ? 'PRUEBAS' : 'PRODUCCION',
+      mensaje: 'Nota de Credito emitida y encolada para autorizacion ante el SRI.',
     };
   }
 }

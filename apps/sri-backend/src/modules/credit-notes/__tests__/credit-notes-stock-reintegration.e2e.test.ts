@@ -27,36 +27,20 @@ describe('A1 & A2: Reintegro de stock por producto_id real al AUTORIZAR (Idempot
   const REAL_PRODUCTO_ID = 'prod-uuid-farmacia-999';
   const CODIGO_PRINCIPAL_XML = 'MED-AMOX-500';
 
-  const mockSupabaseClient = {
-    rpc: vi.fn().mockResolvedValue({ data: 15, error: null }),
-    from: vi.fn().mockImplementation((table: string) => {
-      if (table === 'venta_detalle') {
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({
-              data: [
-                {
-                  producto_id: REAL_PRODUCTO_ID,
-                  codigo_principal: CODIGO_PRINCIPAL_XML,
-                  descripcion: 'Amoxicilina 500mg Cápsulas',
-                  cantidad: 3,
-                },
-              ],
-              error: null,
-            }),
-          }),
-        };
+  const mockDatabaseService = {
+    query: vi.fn().mockImplementation(async (sql: string) => {
+      if (sql.includes('venta_detalle')) {
+        return [
+          {
+            producto_id: REAL_PRODUCTO_ID,
+            codigo_principal: CODIGO_PRINCIPAL_XML,
+            descripcion: 'Amoxicilina 500mg Capsulas',
+            cantidad: 3,
+          },
+        ];
       }
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-        }),
-      };
+      return [];
     }),
-  };
-
-  const mockSupabaseService = {
-    getClientOrThrow: vi.fn().mockReturnValue(mockSupabaseClient),
   };
 
   const xmlFacturaOriginal = `
@@ -84,7 +68,7 @@ describe('A1 & A2: Reintegro de stock por producto_id real al AUTORIZAR (Idempot
       <detalles>
         <detalle>
           <codigoPrincipal>${CODIGO_PRINCIPAL_XML}</codigoPrincipal>
-          <descripcion>Amoxicilina 500mg Cápsulas</descripcion>
+          <descripcion>Amoxicilina 500mg Capsulas</descripcion>
           <cantidad>3.00</cantidad>
           <precioUnitario>5.00</precioUnitario>
           <descuento>0.00</descuento>
@@ -110,7 +94,6 @@ describe('A1 & A2: Reintegro de stock por producto_id real al AUTORIZAR (Idempot
 
     repository = new InMemorySriComprobanteRepository();
 
-    // Guardar factura original en el repositorio
     await repository.guardarComprobante({
       claveAcceso: '2209202601179001691900110010010000000011234567818',
       tipoComprobante: '01',
@@ -129,20 +112,19 @@ describe('A1 & A2: Reintegro de stock por producto_id real al AUTORIZAR (Idempot
       mockXmlSignerService as any,
       repository as any,
       mockQueueWorker as any,
-      mockSupabaseService as any,
+      mockDatabaseService as any,
     );
   });
 
   it('A1: Debe recuperar el producto_id real de venta_detalle (no el codigoPrincipal) y persistir lineas con producto_id', async () => {
     const res = await creditNotesService.emitirNotaCredito({
       facturaClaveAcceso: '2209202601179001691900110010010000000011234567818',
-      motivo: 'Devolución de 1 unidad',
+      motivo: 'Devolucion de 1 unidad',
       items: [{ codigo: CODIGO_PRINCIPAL_XML, cantidad: 1 }],
     });
 
     expect(res.estado).toBe('FIRMADO');
 
-    // Verificar que se persistió en el detalle con producto_id real
     expect(repository.detallesNotaCredito).toHaveLength(1);
     const detalleGuardado = repository.detallesNotaCredito[0];
     expect(detalleGuardado.productoId).toBe(REAL_PRODUCTO_ID);
@@ -150,14 +132,13 @@ describe('A1 & A2: Reintegro de stock por producto_id real al AUTORIZAR (Idempot
     expect(detalleGuardado.cantidad).toBe(1);
     expect(detalleGuardado.stock_reintegrado).toBe(false);
 
-    // Verificar que el stock NO fue reintegrado en la emisión
-    expect(mockSupabaseClient.rpc).not.toHaveBeenCalledWith('reintegrar_stock', expect.anything());
+    expect(repository.llamadasReintegro).toHaveLength(0);
   });
 
   it('A2: Si la NC queda en NO_AUTORIZADO, el stock NO se reintegra', async () => {
     const res = await creditNotesService.emitirNotaCredito({
       facturaClaveAcceso: '2209202601179001691900110010010000000011234567818',
-      motivo: 'Devolución de 1 unidad',
+      motivo: 'Devolucion de 1 unidad',
       items: [{ codigo: CODIGO_PRINCIPAL_XML, cantidad: 1 }],
     });
 
@@ -165,7 +146,7 @@ describe('A1 & A2: Reintegro de stock por producto_id real al AUTORIZAR (Idempot
       enviarComprobante: vi.fn().mockResolvedValue({ estado: 'RECIBIDA', mensajes: [] }),
       consultarAutorizacion: vi.fn().mockResolvedValue({
         estado: 'NO AUTORIZADO',
-        mensajes: [{ mensaje: 'Error de validación fiscal' }],
+        mensajes: [{ mensaje: 'Error de validacion fiscal' }],
       }),
     };
 
@@ -185,12 +166,10 @@ describe('A1 & A2: Reintegro de stock por producto_id real al AUTORIZAR (Idempot
     const processRes = await processor.procesarJob(jobRecord);
     expect(processRes.exito).toBe(false);
 
-    // Estado comprobante pasó a NO_AUTORIZADO
     const compDb = await repository.obtenerComprobantePorId(res.id);
     expect(compDb?.estado).toBe('NO_AUTORIZADO');
     expect(compDb?.stock_reintegrado).toBeFalsy();
 
-    // Detalle sigue sin reintegrar stock
     expect(repository.detallesNotaCredito[0].stock_reintegrado).toBe(false);
     expect(repository.llamadasReintegro).toHaveLength(0);
   });
@@ -198,7 +177,7 @@ describe('A1 & A2: Reintegro de stock por producto_id real al AUTORIZAR (Idempot
   it('A2: Al AUTORIZARSE la NC, se reintegra el stock transaccional e idempotentemente sin duplicar en reintentos', async () => {
     const res = await creditNotesService.emitirNotaCredito({
       facturaClaveAcceso: '2209202601179001691900110010010000000011234567818',
-      motivo: 'Devolución de 1 unidad',
+      motivo: 'Devolucion de 1 unidad',
       items: [{ codigo: CODIGO_PRINCIPAL_XML, cantidad: 1 }],
     });
 
@@ -226,7 +205,6 @@ describe('A1 & A2: Reintegro de stock por producto_id real al AUTORIZAR (Idempot
       maxIntentos: 3,
     };
 
-    // 1er procesamiento: pasa a AUTORIZADO y repone stock
     const processRes = await processor.procesarJob(jobRecord);
     expect(processRes.exito).toBe(true);
 
@@ -236,8 +214,6 @@ describe('A1 & A2: Reintegro de stock por producto_id real al AUTORIZAR (Idempot
     expect(repository.detallesNotaCredito[0].stock_reintegrado).toBe(true);
     expect(repository.llamadasReintegro).toHaveLength(1);
 
-    // 2do procesamiento (reintento o re-procesamiento idempotente):
-    // La RPC detecta stock_reintegrado = true y no vuelve a aplicar reintegro
     const reintento = await repository.reintegrarStockNotaCredito(res.id);
     expect(reintento).toBe(true);
     expect(compDb?.stock_reintegrado).toBe(true);

@@ -1,21 +1,21 @@
 # Guía de Despliegue en Producción — Backend SRI & Worker PharmaStock
 
-Esta guía detalla el procedimiento paso a paso para desplegar el backend NestJS con su worker 24/7 en plataformas Cloud (Render, Railway, Fly.io) o en un VPS propio con Docker Compose, conectándolo con el frontend en Netlify y la base de datos Supabase.
+Esta guía detalla el procedimiento paso a paso para desplegar el backend NestJS con su worker 24/7 en plataformas Cloud (Render, Railway, Fly.io) o en un VPS propio con Docker Compose, conectándolo con la base de datos PostgreSQL.
 
 ---
 
 ## 1. Arquitectura de Despliegue
 
 ```
-[ Frontend: Netlify ]
+[ Frontend: Netlify / Mismo Origen ]
    (Vite + React)
         │
         ▼ HTTPS
 [ Backend SRI + Worker 24/7 ] ──(SOAP / HTTPS)──► [ SRI Web Services ]
    (NestJS en Render/Railway/VPS)                     (Celcer / Cel)
         │
-        ▼ SSL / TLS
-[ Supabase PostgreSQL ]
+        ▼ TCP / SSL
+[ PostgreSQL (pg Pool) ]
   (Comprobantes, Jobs, Stock)
 ```
 
@@ -57,8 +57,8 @@ Para plataformas como Render, Railway o Fly.io que gestionan secretos mediante v
 | `SRI_P12_BASE64` | String (Base64) | Certificado digital codificado en Base64 | `MIIKPQIBAzCCCgcGCSqGSIb3...` |
 | `SRI_P12_PATH` | Ruta (opcional) | Alternativa: ruta en disco si se monta volumen | `/etc/secrets/firma.p12` |
 | `SRI_P12_PASSWORD` | String | Contraseña de la firma electrónica | `TuClaveSegura2026!` |
-| `SUPABASE_URL` | URL | URL del proyecto Supabase | `https://xxxx.supabase.co` |
-| `SUPABASE_SERVICE_ROLE_KEY` | String | Clave `service_role` de Supabase (acceso backend) | `eyJhbGci...` |
+| `DATABASE_URL` | Cadena de conexión | URL de conexión PostgreSQL (ej. postgresql://user:pass@host:5432/db) | `postgresql://usuario_app:clave@host:5432/ualdo_negocios` |
+| `PGSSL` | String (opcional) | Modo SSL para PostgreSQL gestionado ('require' o omitir) | `require` |
 | `JWT_SECRET` | String | Secreto para firma y validación de tokens JWT de sesión (mínimo 32 caracteres) | `mi_secreto_super_seguro_produccion_2026` |
 | `POS_API_KEY` | String | Clave para llamadas internas de servicio backend a backend (mínimo 32 caracteres) | `clave_interna_servicio_backend_2026` |
 | `FRONTEND_URL` | URL | URL pública del POS (para CORS) | `https://pos.negocios.ualdocorp.com` |
@@ -110,7 +110,7 @@ Para plataformas como Render, Railway o Fly.io que gestionan secretos mediante v
    ```
 4. Configure los secretos:
    ```bash
-   fly secrets set SRI_AMBIENTE=2 SRI_REQUIRE_DB=true SRI_RUC_EMISOR=1790016919001 SRI_P12_PASSWORD=tu_clave SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... POS_API_KEY=... SRI_P12_BASE64="MI..."
+   fly secrets set SRI_AMBIENTE=2 SRI_REQUIRE_DB=true SRI_RUC_EMISOR=1790016919001 SRI_P12_PASSWORD=tu_clave DATABASE_URL="postgresql://usuario_app:clave@host:5432/ualdo_negocios" POS_API_KEY=... SRI_P12_BASE64="MI..."
    ```
 5. Despliegue:
    ```bash
@@ -167,8 +167,7 @@ Para plataformas como Render, Railway o Fly.io que gestionan secretos mediante v
    SRI_RUC_EMISOR=1790016919001
    SRI_P12_BASE64=<su_certificado_p12_en_base64>
    SRI_P12_PASSWORD=<clave_del_certificado>
-   SUPABASE_URL=https://<su-proyecto>.supabase.co
-   SUPABASE_SERVICE_ROLE_KEY=<service_role_key>
+   DATABASE_URL=postgresql://usuario_app:clave_segura@postgres:5432/ualdo_negocios
    POS_API_KEY=<su_clave_api_pos>
    FRONTEND_URL=https://<su-pos-en-netlify-o-coolify>
    SMTP_HOST=smtp.gmail.com

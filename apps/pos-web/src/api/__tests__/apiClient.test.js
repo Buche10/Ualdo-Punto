@@ -34,7 +34,7 @@ describe('apiClient getBaseUrl (mismo origen)', () => {
 
   it('no debe filtrar ni depender de claves secretas en el cliente', () => {
     expect(import.meta.env.JWT_SECRET).toBeUndefined();
-    expect(import.meta.env.SUPABASE_SERVICE_ROLE_KEY).toBeUndefined();
+    expect(import.meta.env.DATABASE_URL).toBeUndefined();
     expect(import.meta.env.SRI_P12_PASSWORD).toBeUndefined();
   });
 });

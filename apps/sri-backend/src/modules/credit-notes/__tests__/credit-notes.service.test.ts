@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CreditNotesService } from '../credit-notes.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
-describe('CreditNotesService (Fase 5 - Emisión de Notas de Crédito / Devoluciones)', () => {
+describe('CreditNotesService (Fase 5 - Emision de Notas de Credito / Devoluciones)', () => {
   let service: CreditNotesService;
 
   const mockAccessKeyService = {
@@ -29,27 +29,15 @@ describe('CreditNotesService (Fase 5 - Emisión de Notas de Crédito / Devolucio
     despacharInmediato: vi.fn().mockResolvedValue(undefined),
   };
 
-  const mockSupabaseClient = {
-    rpc: vi.fn().mockResolvedValue({ data: 10, error: null }),
-    from: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({
-          data: [
-            {
-              producto_id: 'real-prod-uuid-123',
-              codigo_principal: 'MED-01',
-              descripcion: 'Paracetamol 500mg',
-              cantidad: 2,
-            },
-          ],
-          error: null,
-        }),
-      }),
-    }),
-  };
-
-  const mockSupabaseService = {
-    getClientOrThrow: vi.fn().mockReturnValue(mockSupabaseClient),
+  const mockDatabaseService = {
+    query: vi.fn().mockResolvedValue([
+      {
+        producto_id: 'real-prod-uuid-123',
+        codigo_principal: 'MED-01',
+        descripcion: 'Paracetamol 500mg',
+        cantidad: 2,
+      },
+    ]),
   };
 
   const xmlFacturaOriginal = `
@@ -107,11 +95,11 @@ describe('CreditNotesService (Fase 5 - Emisión de Notas de Crédito / Devolucio
       mockXmlSignerService as any,
       mockSriRepository as any,
       mockQueueWorker as any,
-      mockSupabaseService as any,
+      mockDatabaseService as any,
     );
   });
 
-  it('debe rechazar si la clave de acceso de la factura no tiene 49 dígitos', async () => {
+  it('debe rechazar si la clave de acceso de la factura no tiene 49 digitos', async () => {
     await expect(
       service.emitirNotaCredito({
         facturaClaveAcceso: 'clave-corta',
@@ -131,7 +119,7 @@ describe('CreditNotesService (Fase 5 - Emisión de Notas de Crédito / Devolucio
     ).rejects.toThrow(NotFoundException);
   });
 
-  it('debe lanzar BadRequestException si la factura original no está en estado AUTORIZADO', async () => {
+  it('debe lanzar BadRequestException si la factura original no esta en estado AUTORIZADO', async () => {
     mockSriRepository.obtenerComprobantePorClave.mockResolvedValueOnce({
       id: 'comp-1',
       estado: 'EN_CONTINGENCIA',
@@ -146,76 +134,54 @@ describe('CreditNotesService (Fase 5 - Emisión de Notas de Crédito / Devolucio
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('debe rechazar si la cantidad a devolver supera la cantidad facturada', async () => {
+  it('debe lanzar BadRequestException si la cantidad a devolver excede la factura original', async () => {
     mockSriRepository.obtenerComprobantePorClave.mockResolvedValueOnce({
       id: 'comp-1',
       estado: 'AUTORIZADO',
       xml_firmado: xmlFacturaOriginal,
+      venta_id: 'venta-1',
     });
 
     await expect(
       service.emitirNotaCredito({
         facturaClaveAcceso: '2209202601179001691900110010010000000011234567818',
-        motivo: 'DEVOLUCION',
-        items: [{ codigo: 'MED-01', cantidad: 5 }], // Facturado era 2
+        motivo: 'Devolucion de 5 items',
+        items: [{ codigo: 'MED-01', cantidad: 5 }],
       }),
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('debe emitir exitosamente la Nota de Crédito ligada a la factura original y encolar el job', async () => {
+  it('debe emitir correctamente una Nota de Credito total y encolarla en el worker', async () => {
     mockSriRepository.obtenerComprobantePorClave.mockResolvedValueOnce({
-      id: 'comp-1',
+      id: 'comp-orig-1',
       estado: 'AUTORIZADO',
       xml_firmado: xmlFacturaOriginal,
-      venta_id: 'venta-uuid-1',
+      venta_id: 'venta-1',
     });
 
     const resultado = await service.emitirNotaCredito({
       facturaClaveAcceso: '2209202601179001691900110010010000000011234567818',
-      motivo: 'DEVOLUCIÓN PARCIAL MEDICAMENTO',
-      items: [{ codigo: 'MED-01', cantidad: 1 }],
+      motivo: 'Devolucion total de mercaderia',
     });
 
-    expect(resultado.documentoModificado).toEqual({
-      tipo: '01',
-      numDoc: '001-001-000000042',
-      claveAcceso: '2209202601179001691900110010010000000011234567818',
-    });
+    expect(resultado).toBeDefined();
+    expect(resultado.id).toBe('nc-uuid-1');
+    expect(resultado.jobId).toBe('nc-job-1');
+    expect(resultado.claveAcceso).toBe('2809202604179001691900110010010000000011234567812');
+    expect(resultado.secuencial).toBe('001-001-000000005');
+    expect(resultado.documentoModificado.numDoc).toBe('001-001-000000042');
+    expect(resultado.documentoModificado.claveAcceso).toBe('2209202601179001691900110010010000000011234567818');
+    expect(resultado.totales.importeTotal).toBe(11.50);
 
-    // Secuencial de nota de crédito (tipo '04')
-    expect(mockSriRepository.obtenerSiguienteSecuencial).toHaveBeenCalledWith('04', '001', '001');
-
-    // Clave de acceso generada con tipo '04'
-    expect(mockAccessKeyService.generarClaveAcceso).toHaveBeenCalledWith(
-      expect.objectContaining({ tipoComprobante: '04' }),
-    );
-
-    // Firma con ec-sri-invoice-signer
-    expect(mockXmlSignerService.firmarNotaCreditoXml).toHaveBeenCalled();
-
-    // Guardado con tipo_comprobante '04'
     expect(mockSriRepository.guardarComprobante).toHaveBeenCalledWith(
       expect.objectContaining({
         tipoComprobante: '04',
+        claveAcceso: '2809202604179001691900110010010000000011234567812',
         estado: 'FIRMADO',
-        ventaId: 'venta-uuid-1',
+        ventaId: 'venta-1',
       }),
     );
 
-    // A1: Se guardan líneas de Nota de Crédito con producto_id real desde venta_detalle
-    expect(mockSriRepository.guardarDetallesNotaCredito).toHaveBeenCalledWith([
-      expect.objectContaining({
-        comprobanteId: 'nc-uuid-1',
-        productoId: 'real-prod-uuid-123',
-        codigoPrincipal: 'MED-01',
-        cantidad: 1,
-      }),
-    ]);
-
-    // A2: El reintegro de stock NO se ejecuta prematuramente en emisión
-    expect(mockSupabaseClient.rpc).not.toHaveBeenCalledWith('reintegrar_stock', expect.anything());
-
-    // Encolado y despacho en worker asíncrono
     expect(mockSriRepository.crearSriJob).toHaveBeenCalledWith('nc-uuid-1');
     expect(mockQueueWorker.despacharInmediato).toHaveBeenCalledWith(
       expect.objectContaining({

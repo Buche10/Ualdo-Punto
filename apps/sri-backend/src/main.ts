@@ -22,6 +22,19 @@ async function bootstrap() {
     }
   }
 
+  const hasDbConfig = Boolean(
+    process.env.DATABASE_URL ||
+      (process.env.PGHOST && process.env.PGUSER && process.env.PGDATABASE),
+  );
+  const requireDb = process.env.SRI_REQUIRE_DB
+    ? process.env.SRI_REQUIRE_DB === 'true'
+    : process.env.NODE_ENV === 'production' || process.env.SRI_AMBIENTE === '2';
+
+  if (!hasDbConfig && requireDb) {
+    logger.error('CRITICO: DATABASE_URL no definida en modo estricto. Abortando inicio.');
+    process.exit(1);
+  }
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.set('trust proxy', 1);

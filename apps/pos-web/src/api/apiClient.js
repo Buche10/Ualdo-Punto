@@ -81,6 +81,50 @@ export const apiClient = {
   obtenerUsuarioActual: () =>
     request('/auth/me'),
 
+  // Inventario
+  obtenerInventario: () =>
+    request('/inventory'),
+
+  reemplazarInventario: (payload) =>
+    request('/inventory/replace', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  crearProducto: (producto) =>
+    request('/products', {
+      method: 'POST',
+      body: JSON.stringify(producto),
+    }),
+
+  actualizarProducto: (id, producto) =>
+    request(`/products/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(producto),
+    }),
+
+  eliminarProducto: (id) =>
+    request(`/products/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
+
+  guardarProductosLote: (productos) =>
+    request('/products/batch', {
+      method: 'POST',
+      body: JSON.stringify(productos),
+    }),
+
+  crearLote: (lote) =>
+    request('/batches', {
+      method: 'POST',
+      body: JSON.stringify(lote),
+    }),
+
+  eliminarLote: (id) =>
+    request(`/batches/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
+
   // Clientes
   buscarCliente: (identificacion) =>
     request(`/clientes/buscar?identificacion=${encodeURIComponent(identificacion)}`),

@@ -9,6 +9,7 @@ import { SalesModule } from './modules/sales/sales.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { CreditNotesModule } from './modules/credit-notes/credit-notes.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -63,6 +64,7 @@ function getServeStaticRoot(): string | null {
     CustomersModule,
     CreditNotesModule,
     AuthModule,
+    InventoryModule,
   ],
   providers: [
     {

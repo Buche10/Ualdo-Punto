@@ -17,11 +17,6 @@ vi.mock('../../utils/storage', () => ({
   importInventoryJSON: () => ({ success: true, products: [], batches: [], auditLogs: [] }),
 }));
 
-vi.mock('../../utils/supabaseClient', () => ({
-  supabase: null,
-  isCloudEnabled: false,
-}));
-
 vi.mock('../../utils/cloudSync', () => ({
   fetchAll: vi.fn().mockResolvedValue({ products: [], batches: [] }),
   upsertProductCloud: vi.fn(),

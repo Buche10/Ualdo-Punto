@@ -4,20 +4,16 @@ import { Customer } from '@pharmastock/shared';
 
 describe('CustomersService (Manejo de Clientes POS y Privacidad PII)', () => {
   let service: CustomersService;
-  let mockSupabaseService: any;
-  let mockClient: any;
+  let mockDatabaseService: any;
 
   beforeEach(() => {
-    mockClient = {
-      from: vi.fn(),
+    mockDatabaseService = {
+      query: vi.fn(),
     };
-    mockSupabaseService = {
-      getClientOrThrow: vi.fn().mockReturnValue(mockClient),
-    };
-    service = new CustomersService(mockSupabaseService);
+    service = new CustomersService(mockDatabaseService);
   });
 
-  it('debe buscar cliente por identificación', async () => {
+  it('debe buscar cliente por identificacion', async () => {
     const mockCustomer = {
       id: 'cust-1',
       tipo_identificacion: '05',
@@ -27,17 +23,17 @@ describe('CustomersService (Manejo de Clientes POS y Privacidad PII)', () => {
       email: 'juan@gmail.com',
     };
 
-    const maybeSingleMock = vi.fn().mockResolvedValueOnce({ data: mockCustomer, error: null });
-    const eqMock = vi.fn().mockReturnValue({ maybeSingle: maybeSingleMock });
-    const selectMock = vi.fn().mockReturnValue({ eq: eqMock });
-    mockClient.from.mockReturnValue({ select: selectMock });
+    mockDatabaseService.query.mockResolvedValueOnce([mockCustomer]);
 
     const result = await service.buscarPorIdentificacion('1710034065');
 
     expect(result).toBeDefined();
     expect(result?.identificacion).toBe('1710034065');
     expect(result?.razonSocial).toBe('JUAN PEREZ');
-    expect(mockClient.from).toHaveBeenCalledWith('clientes');
+    expect(mockDatabaseService.query).toHaveBeenCalledWith(
+      expect.stringContaining('SELECT * FROM public.clientes WHERE identificacion = $1'),
+      ['1710034065'],
+    );
   });
 
   it('debe crear o actualizar cliente en la base de datos', async () => {
@@ -49,22 +45,24 @@ describe('CustomersService (Manejo de Clientes POS y Privacidad PII)', () => {
       email: 'juan@gmail.com',
     };
 
-    const singleMock = vi.fn().mockResolvedValueOnce({
-      data: {
+    mockDatabaseService.query.mockResolvedValueOnce([
+      {
         id: 'cust-1',
         tipo_identificacion: '05',
         identificacion: '1710034065',
         razon_social: 'JUAN PEREZ',
+        direccion: 'Quito',
+        telefono: undefined,
+        email: 'juan@gmail.com',
       },
-      error: null,
-    });
-    const selectMock = vi.fn().mockReturnValue({ single: singleMock });
-    const upsertMock = vi.fn().mockReturnValue({ select: selectMock });
-    mockClient.from.mockReturnValue({ upsert: upsertMock });
+    ]);
 
     const result = await service.crearOActualizar(clienteDto);
 
     expect(result.id).toBe('cust-1');
-    expect(mockClient.from).toHaveBeenCalledWith('clientes');
+    expect(mockDatabaseService.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO public.clientes'),
+      expect.arrayContaining(['05', '1710034065', 'JUAN PEREZ']),
+    );
   });
 });

@@ -1,101 +1,92 @@
-import { supabase } from './supabaseClient';
+import { apiClient } from '../api/apiClient';
 
-// Capa de sincronización con Supabase.
-//
-// Modelo de datos: cada producto y cada lote se guardan como una fila con su
-// `id` (texto) y el objeto completo en una columna JSONB `data`. Así no hay que
-// mantener un mapeo campo-a-columna y el objeto viaja idéntico a como lo usa la
-// app. Toda la lógica de filtrado/cálculo sigue ocurriendo en el cliente.
+// Capa de sincronizacion de inventario contra el backend NestJS (PostgreSQL).
+// Las funciones llaman a los endpoints REST autenticados con la cookie de sesion.
 
 // --- Lectura -------------------------------------------------------------
 
 export const fetchProducts = async () => {
-  const { data, error } = await supabase.from('products').select('data');
-  if (error) throw error;
-  return (data || []).map((row) => row.data);
+  const data = await apiClient.obtenerInventario();
+  return data?.products || [];
 };
 
 export const fetchBatches = async () => {
-  const { data, error } = await supabase.from('batches').select('data');
-  if (error) throw error;
-  return (data || []).map((row) => row.data);
+  const data = await apiClient.obtenerInventario();
+  return data?.batches || [];
 };
 
 export const fetchAll = async () => {
-  const [products, batches] = await Promise.all([fetchProducts(), fetchBatches()]);
-  return { products, batches };
+  const data = await apiClient.obtenerInventario();
+  return {
+    products: data?.products || [],
+    batches: data?.batches || [],
+  };
 };
 
 // --- Escritura de productos ---------------------------------------------
 
 export const upsertProductCloud = async (product) => {
-  const { error } = await supabase
-    .from('products')
-    .upsert({ id: product.id, data: product });
-  if (error) throw error;
+  if (!product) return;
+  await apiClient.crearProducto(product);
 };
 
-// Guarda de una vez una lista completa de productos (p. ej. tras un conteo múltiple)
 export const upsertProductsCloud = async (products) => {
-  if (!products.length) return;
-  const rows = products.map((p) => ({ id: p.id, data: p }));
-  const { error } = await supabase.from('products').upsert(rows);
-  if (error) throw error;
+  if (!products || !products.length) return;
+  await apiClient.guardarProductosLote(products);
 };
 
 export const deleteProductCloud = async (productId) => {
-  // Borra el producto y, en cascada, sus lotes asociados
-  const { error: pErr } = await supabase.from('products').delete().eq('id', productId);
-  if (pErr) throw pErr;
-  const { error: bErr } = await supabase.from('batches').delete().eq('product_id', productId);
-  if (bErr) throw bErr;
+  if (!productId) return;
+  await apiClient.eliminarProducto(productId);
 };
 
 // --- Escritura de lotes --------------------------------------------------
 
 export const upsertBatchCloud = async (batch) => {
-  const { error } = await supabase
-    .from('batches')
-    .upsert({ id: batch.id, product_id: batch.productId, data: batch });
-  if (error) throw error;
+  if (!batch) return;
+  await apiClient.crearLote(batch);
 };
 
 export const deleteBatchCloud = async (batchId) => {
-  const { error } = await supabase.from('batches').delete().eq('id', batchId);
-  if (error) throw error;
+  if (!batchId) return;
+  await apiClient.eliminarLote(batchId);
 };
 
-// --- Reemplazo total (importar JSON / reiniciar demo) --------------------
+// --- Reemplazo total (importar JSON / reiniciar catalogo) ----------------
 
-export const replaceAllCloud = async (products, batches) => {
-  // Vacía ambas tablas y vuelve a insertar el estado recibido.
-  // El filtro `neq id ''` cumple el requisito de tener siempre una cláusula WHERE.
-  const { error: delB } = await supabase.from('batches').delete().neq('id', '');
-  if (delB) throw delB;
-  const { error: delP } = await supabase.from('products').delete().neq('id', '');
-  if (delP) throw delP;
-
-  await upsertProductsCloud(products);
-  if (batches.length) {
-    const rows = batches.map((b) => ({ id: b.id, product_id: b.productId, data: b }));
-    const { error } = await supabase.from('batches').insert(rows);
-    if (error) throw error;
-  }
+export const replaceAllCloud = async (products = [], batches = []) => {
+  await apiClient.reemplazarInventario({ products, batches });
 };
 
-// --- Tiempo real ---------------------------------------------------------
+// --- Sincronizacion periodica y foco -------------------------------------
 
-// Suscribe a cambios en ambas tablas. Ante cualquier cambio hecho por otro
-// dispositivo, invoca `onChange()` para que la app recargue el estado.
-// Devuelve una función para cancelar la suscripción.
+// Reemplaza el realtime con refetch al recuperar foco/visibilidad y polling ligero
 export const subscribeToChanges = (onChange) => {
-  const channel = supabase
-    .channel('inventory-sync')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, onChange)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'batches' }, onChange)
-    .subscribe();
+  const handleVisibilityChange = () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      onChange();
+    }
+  };
+
+  const handleWindowFocus = () => {
+    onChange();
+  };
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', handleWindowFocus);
+  }
+  const intervalId = setInterval(onChange, 45000);
 
   return () => {
-    supabase.removeChannel(channel);
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('focus', handleWindowFocus);
+    }
+    clearInterval(intervalId);
   };
 };

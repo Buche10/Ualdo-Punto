@@ -3,10 +3,9 @@ import { SalesService } from '../sales.service';
 import { BadRequestException, ConflictException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { CrearVentaDto } from '../sales.dto';
 
-describe('SalesService (Gestión Transaccional de Ventas y Descuento de Stock)', () => {
+describe('SalesService (Gestion Transaccional de Ventas y Descuento de Stock)', () => {
   let service: SalesService;
-  let mockSupabaseService: any;
-  let mockClient: any;
+  let mockDatabaseService: any;
 
   const validVentaDto: CrearVentaDto = {
     cliente: {
@@ -30,7 +29,7 @@ describe('SalesService (Gestión Transaccional de Ventas y Descuento de Stock)',
       {
         productoId: 'prod-2',
         codigo: 'INS01',
-        descripcion: 'Alcohol antiséptico 500ml',
+        descripcion: 'Alcohol antiseptico 500ml',
         cantidad: 1,
         precioUnitario: 2.00,
         descuento: 0,
@@ -42,34 +41,30 @@ describe('SalesService (Gestión Transaccional de Ventas y Descuento de Stock)',
   };
 
   beforeEach(() => {
-    mockClient = {
-      rpc: vi.fn(),
-      from: vi.fn(),
+    mockDatabaseService = {
+      query: vi.fn(),
     };
 
-    mockSupabaseService = {
-      getClientOrThrow: vi.fn().mockReturnValue(mockClient),
-      getClient: vi.fn().mockReturnValue(mockClient),
-      isAvailable: vi.fn().mockReturnValue(true),
-    };
-
-    service = new SalesService(mockSupabaseService);
+    service = new SalesService(mockDatabaseService);
   });
 
-  it('debe registrar la venta atómicamente y retornar ventaId con totales calculados', async () => {
-    mockClient.rpc.mockResolvedValueOnce({ data: 'uuid-venta-123', error: null });
+  it('debe registrar la venta atomicamente y retornar ventaId con totales calculados', async () => {
+    mockDatabaseService.query.mockResolvedValueOnce([{ venta_id: 'uuid-venta-123' }]);
 
     const result = await service.registrarVenta(validVentaDto);
 
     expect(result.ventaId).toBe('uuid-venta-123');
-    expect(result.totales.subtotal0).toBe(3.00); // 2 * 1.50
-    expect(result.totales.subtotal15).toBe(2.00); // 1 * 2.00
-    expect(result.totales.totalIva).toBe(0.30); // 2.00 * 0.15
-    expect(result.totales.importeTotal).toBe(5.30); // 5.00 + 0.30
-    expect(mockClient.rpc).toHaveBeenCalledWith('procesar_venta_pos', expect.anything());
+    expect(result.totales.subtotal0).toBe(3.00);
+    expect(result.totales.subtotal15).toBe(2.00);
+    expect(result.totales.totalIva).toBe(0.30);
+    expect(result.totales.importeTotal).toBe(5.30);
+    expect(mockDatabaseService.query).toHaveBeenCalledWith(
+      expect.stringContaining('SELECT public.procesar_venta_pos'),
+      expect.anything(),
+    );
   });
 
-  it('debe rechazar ventas mayores a $50 a Consumidor Final sin identificación (SRI)', async () => {
+  it('debe rechazar ventas mayores a $50 a Consumidor Final sin identificacion (SRI)', async () => {
     const dtoExcedido: CrearVentaDto = {
       ...validVentaDto,
       cliente: {
@@ -92,32 +87,29 @@ describe('SalesService (Gestión Transaccional de Ventas y Descuento de Stock)',
     };
 
     await expect(service.registrarVenta(dtoExcedido)).rejects.toThrow(BadRequestException);
-    expect(mockClient.rpc).not.toHaveBeenCalled();
+    expect(mockDatabaseService.query).not.toHaveBeenCalled();
   });
 
   it('debe lanzar ConflictException (409) si la base de datos reporta STOCK_INSUFICIENTE', async () => {
-    mockClient.rpc.mockResolvedValueOnce({
-      data: null,
-      error: { message: 'STOCK_INSUFICIENTE: Producto prod-1 tiene stock 1 pero se solicitaron 2' },
-    });
+    mockDatabaseService.query.mockRejectedValueOnce(
+      new Error('STOCK_INSUFICIENTE: Producto prod-1 tiene stock 1 pero se solicitaron 2'),
+    );
 
     await expect(service.registrarVenta(validVentaDto)).rejects.toThrow(ConflictException);
   });
 
-  it('debe lanzar NotFoundException (404) si el producto no existe en el catálogo', async () => {
-    mockClient.rpc.mockResolvedValueOnce({
-      data: null,
-      error: { message: 'PRODUCTO_NO_ENCONTRADO: prod-invalido' },
-    });
+  it('debe lanzar NotFoundException (404) si el producto no existe en el catalogo', async () => {
+    mockDatabaseService.query.mockRejectedValueOnce(
+      new Error('PRODUCTO_NO_ENCONTRADO: prod-invalido'),
+    );
 
     await expect(service.registrarVenta(validVentaDto)).rejects.toThrow(NotFoundException);
   });
 
-  it('debe lanzar InternalServerErrorException si la base de datos falla genéricamente', async () => {
-    mockClient.rpc.mockResolvedValueOnce({
-      data: null,
-      error: { message: 'Connection timeout in database' },
-    });
+  it('debe lanzar InternalServerErrorException si la base de datos falla genericamente', async () => {
+    mockDatabaseService.query.mockRejectedValueOnce(
+      new Error('Connection timeout in database'),
+    );
 
     await expect(service.registrarVenta(validVentaDto)).rejects.toThrow(InternalServerErrorException);
   });

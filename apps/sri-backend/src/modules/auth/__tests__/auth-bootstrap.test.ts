@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { AuthModule } from '../auth.module';
-import { SupabaseService } from '../../database/supabase.service';
+import { DatabaseService } from '../../database/database.service';
 
 describe('AuthModule Bootstrap Validation', () => {
   beforeEach(() => {
@@ -14,12 +14,12 @@ describe('AuthModule Bootstrap Validation', () => {
     const modulePromise = Test.createTestingModule({
       imports: [AuthModule],
     })
-      .overrideProvider(SupabaseService)
-      .useValue({ getClient: () => null })
+      .overrideProvider(DatabaseService)
+      .useValue({ isAvailable: () => false, getPool: () => null })
       .compile();
 
     await expect(modulePromise).rejects.toThrow(
-      'JWT_SECRET debe estar definido y tener al menos 32 caracteres'
+      'JWT_SECRET debe estar definido y tener al menos 32 caracteres',
     );
   });
 
@@ -29,12 +29,12 @@ describe('AuthModule Bootstrap Validation', () => {
     const modulePromise = Test.createTestingModule({
       imports: [AuthModule],
     })
-      .overrideProvider(SupabaseService)
-      .useValue({ getClient: () => null })
+      .overrideProvider(DatabaseService)
+      .useValue({ isAvailable: () => false, getPool: () => null })
       .compile();
 
     await expect(modulePromise).rejects.toThrow(
-      'JWT_SECRET debe estar definido y tener al menos 32 caracteres'
+      'JWT_SECRET debe estar definido y tener al menos 32 caracteres',
     );
   });
 
@@ -44,8 +44,8 @@ describe('AuthModule Bootstrap Validation', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AuthModule],
     })
-      .overrideProvider(SupabaseService)
-      .useValue({ getClient: () => null })
+      .overrideProvider(DatabaseService)
+      .useValue({ isAvailable: () => false, getPool: () => null })
       .compile();
 
     expect(moduleRef).toBeDefined();

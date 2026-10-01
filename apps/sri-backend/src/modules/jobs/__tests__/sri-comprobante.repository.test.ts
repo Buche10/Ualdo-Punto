@@ -4,52 +4,47 @@ import { InternalServerErrorException } from '@nestjs/common';
 
 describe('SriComprobanteRepository (Persistencia Fail-Fast y Sin Fallbacks Silenciosos)', () => {
   let repository: SriComprobanteRepository;
-  let mockSupabaseService: any;
-  let mockClient: any;
+  let mockDatabaseService: any;
 
   beforeEach(() => {
-    mockClient = {
-      rpc: vi.fn(),
-      from: vi.fn(),
-    };
-
-    mockSupabaseService = {
-      getClientOrThrow: vi.fn().mockReturnValue(mockClient),
-      getClient: vi.fn().mockReturnValue(mockClient),
+    mockDatabaseService = {
+      query: vi.fn(),
+      withTransaction: vi.fn(),
       isAvailable: vi.fn().mockReturnValue(true),
     };
 
-    repository = new SriComprobanteRepository(mockSupabaseService);
+    repository = new SriComprobanteRepository(mockDatabaseService);
   });
 
   describe('obtenerSiguienteSecuencial', () => {
-    it('debe retornar el secuencial formateado a 9 dígitos si la RPC tiene éxito', async () => {
-      mockClient.rpc.mockResolvedValueOnce({ data: '123', error: null });
+    it('debe retornar el secuencial formateado a 9 digitos si la consulta tiene exito', async () => {
+      mockDatabaseService.query.mockResolvedValueOnce([{ sec: '123' }]);
 
       const sec = await repository.obtenerSiguienteSecuencial('01', '001', '001');
       expect(sec).toBe('000000123');
-      expect(mockClient.rpc).toHaveBeenCalledWith('obtener_siguiente_secuencial', {
-        p_tipo_doc: '01',
-        p_estab: '001',
-        p_pto_emi: '001',
-      });
+      expect(mockDatabaseService.query).toHaveBeenCalledWith(
+        expect.stringContaining('SELECT public.obtener_siguiente_secuencial'),
+        ['01', '001', '001'],
+      );
     });
 
-    it('debe lanzar InternalServerErrorException si la RPC devuelve un error (NUNCA fabricar secuencial)', async () => {
-      mockClient.rpc.mockResolvedValueOnce({ data: null, error: { message: 'DB connection failure' } });
+    it('debe lanzar InternalServerErrorException si la funcion de BD falla (NUNCA fabricar secuencial)', async () => {
+      mockDatabaseService.query.mockRejectedValueOnce(new Error('DB connection failure'));
 
       await expect(
-        repository.obtenerSiguienteSecuencial('01', '001', '001')
+        repository.obtenerSiguienteSecuencial('01', '001', '001'),
       ).rejects.toThrow(InternalServerErrorException);
     });
   });
 
   describe('guardarComprobante', () => {
-    it('debe retornar el id generado si el insert en la base de datos tiene éxito', async () => {
-      const mockSingle = vi.fn().mockResolvedValueOnce({ data: { id: 'uuid-comprobante-1' }, error: null });
-      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
-      const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
-      mockClient.from.mockReturnValue({ insert: mockInsert });
+    it('debe retornar el id generado si el insert en la base de datos tiene exito', async () => {
+      const mockClient = {
+        query: vi.fn().mockResolvedValueOnce({ rows: [{ id: 'uuid-comprobante-1' }] }),
+      };
+      mockDatabaseService.withTransaction.mockImplementation(async (callback: any) => {
+        return callback(mockClient);
+      });
 
       const result = await repository.guardarComprobante({
         claveAcceso: '2209202601179001691900110010010000000011234567818',
@@ -64,11 +59,10 @@ describe('SriComprobanteRepository (Persistencia Fail-Fast y Sin Fallbacks Silen
       expect(result.id).toBe('uuid-comprobante-1');
     });
 
-    it('debe lanzar InternalServerErrorException si el insert en la base de datos falla (NUNCA guardar en memoria)', async () => {
-      const mockSingle = vi.fn().mockResolvedValueOnce({ data: null, error: { message: 'violación de clave o tabla inaccesible' } });
-      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
-      const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
-      mockClient.from.mockReturnValue({ insert: mockInsert });
+    it('debe lanzar InternalServerErrorException si la insercion en base de datos falla', async () => {
+      mockDatabaseService.withTransaction.mockRejectedValueOnce(
+        new Error('violacion de clave o tabla inaccesible'),
+      );
 
       await expect(
         repository.guardarComprobante({
@@ -79,17 +73,14 @@ describe('SriComprobanteRepository (Persistencia Fail-Fast y Sin Fallbacks Silen
           estado: 'FIRMADO',
           xmlGenerado: '<xml/>',
           xmlFirmado: '<xml-firmado/>',
-        })
+        }),
       ).rejects.toThrow(InternalServerErrorException);
     });
   });
 
   describe('crearSriJob', () => {
-    it('debe lanzar InternalServerErrorException si la inserción en sri_jobs falla', async () => {
-      const mockSingle = vi.fn().mockResolvedValueOnce({ data: null, error: { message: 'sri_jobs error' } });
-      const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
-      const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
-      mockClient.from.mockReturnValue({ insert: mockInsert });
+    it('debe lanzar InternalServerErrorException si la insercion en sri_jobs falla', async () => {
+      mockDatabaseService.query.mockRejectedValueOnce(new Error('sri_jobs error'));
 
       await expect(repository.crearSriJob('comp-uuid-1')).rejects.toThrow(InternalServerErrorException);
     });
@@ -97,23 +88,17 @@ describe('SriComprobanteRepository (Persistencia Fail-Fast y Sin Fallbacks Silen
 
   describe('obtenerComprobantePorClave', () => {
     it('debe retornar null cuando no se encuentra el registro (sin error de BD)', async () => {
-      const mockMaybeSingle = vi.fn().mockResolvedValueOnce({ data: null, error: null });
-      const mockEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
-      mockClient.from.mockReturnValue({ select: mockSelect });
+      mockDatabaseService.query.mockResolvedValueOnce([]);
 
       const comp = await repository.obtenerComprobantePorClave('clave-inexistente');
       expect(comp).toBeNull();
     });
 
     it('debe lanzar InternalServerErrorException cuando hay un error real de BD', async () => {
-      const mockMaybeSingle = vi.fn().mockResolvedValueOnce({ data: null, error: { message: 'timeout en DB' } });
-      const mockEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle });
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
-      mockClient.from.mockReturnValue({ select: mockSelect });
+      mockDatabaseService.query.mockRejectedValueOnce(new Error('timeout en DB'));
 
       await expect(repository.obtenerComprobantePorClave('clave-inexistente')).rejects.toThrow(
-        InternalServerErrorException
+        InternalServerErrorException,
       );
     });
   });

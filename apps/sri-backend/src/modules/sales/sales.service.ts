@@ -5,13 +5,13 @@ import {
   NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { SupabaseService } from '../database/supabase.service';
+import { DatabaseService } from '../database/database.service';
 import { CrearVentaDto, VentaResponseDto } from './sales.dto';
 import { calculateInvoiceTotals, round2, CartItem } from '@pharmastock/shared';
 
 @Injectable()
 export class SalesService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(private readonly databaseService: DatabaseService) {}
 
   async registrarVenta(dto: CrearVentaDto): Promise<VentaResponseDto> {
     const cartItems: CartItem[] = dto.items.map((it) => ({
@@ -33,7 +33,7 @@ export class SalesService {
 
     if (esConsumidorFinal && totals.excedeLimiteConsumidorFinal) {
       throw new BadRequestException(
-        'Las ventas a Consumidor Final no pueden superar los $50.00 según la normativa del SRI'
+        'Las ventas a Consumidor Final no pueden superar los $50.00 segun la normativa del SRI',
       );
     }
 
@@ -69,15 +69,23 @@ export class SalesService {
       importeTotal: totals.importeTotal,
     };
 
-    const client = this.supabase.getClientOrThrow();
-    const { data: ventaId, error } = await client.rpc('procesar_venta_pos', {
-      p_cliente: dto.cliente,
-      p_items: itemsPayload,
-      p_totales: totalesPayload,
-      p_forma_pago: dto.formaPagoCodigo || '01',
-    });
+    let ventaId: string;
+    try {
+      const rows = await this.databaseService.query<{ venta_id: string }>(
+        'SELECT public.procesar_venta_pos($1, $2, $3, $4) AS venta_id',
+        [
+          JSON.stringify(dto.cliente),
+          JSON.stringify(itemsPayload),
+          JSON.stringify(totalesPayload),
+          dto.formaPagoCodigo || '01',
+        ],
+      );
 
-    if (error) {
+      if (!rows || rows.length === 0 || !rows[0].venta_id) {
+        throw new Error('No se genero ID para la venta procesada');
+      }
+      ventaId = rows[0].venta_id;
+    } catch (error: any) {
       const msg = error.message || 'Error desconocido al registrar venta';
       if (msg.includes('STOCK_INSUFICIENTE')) {
         throw new ConflictException(msg);
@@ -89,7 +97,7 @@ export class SalesService {
     }
 
     return {
-      ventaId: ventaId as string,
+      ventaId,
       fecha: new Date().toISOString(),
       totales: {
         subtotal0: totals.subtotal0,
@@ -105,20 +113,24 @@ export class SalesService {
   }
 
   async obtenerVentaPorId(ventaId: string) {
-    const client = this.supabase.getClientOrThrow();
-    const { data, error } = await client
-      .from('ventas')
-      .select('*, clientes(*), venta_detalle(*), comprobantes(*)')
-      .eq('id', ventaId)
-      .maybeSingle();
-
-    if (error) {
+    try {
+      const sql = `
+        SELECT v.*,
+          row_to_json(c.*) AS clientes,
+          COALESCE((SELECT json_agg(vd.*) FROM public.venta_detalle vd WHERE vd.venta_id = v.id), '[]'::json) AS venta_detalle,
+          COALESCE((SELECT json_agg(comp.*) FROM public.comprobantes comp WHERE comp.venta_id = v.id), '[]'::json) AS comprobantes
+        FROM public.ventas v
+        LEFT JOIN public.clientes c ON c.id = v.cliente_id
+        WHERE v.id = $1
+      `;
+      const rows = await this.databaseService.query(sql, [ventaId]);
+      if (!rows || rows.length === 0) {
+        throw new NotFoundException(`Venta no encontrada: ${ventaId}`);
+      }
+      return rows[0];
+    } catch (error: any) {
+      if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException(`Error al consultar venta: ${error.message}`);
     }
-    if (!data) {
-      throw new NotFoundException(`Venta no encontrada: ${ventaId}`);
-    }
-
-    return data;
   }
 }

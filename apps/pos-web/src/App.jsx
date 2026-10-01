@@ -14,7 +14,6 @@ import {
   resetInventoryToDefaults,
   exportInventoryJSON, importInventoryJSON
 } from './utils/storage';
-import { isCloudEnabled } from './utils/supabaseClient';
 import {
   fetchAll,
   upsertProductCloud,
@@ -34,8 +33,8 @@ export function App() {
   const [batches, setBatches] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
-  // Estado de la nube: 'local' (sin Supabase) | 'connecting' | 'online' | 'error'
-  const [cloudStatus, setCloudStatus] = useState(isCloudEnabled ? 'connecting' : 'local');
+  // Estado de sincronizacion: 'connecting' | 'online' | 'error'
+  const [cloudStatus, setCloudStatus] = useState('connecting');
 
   // Sincronizar clase 'dark' en documentElement para Tailwind
   useEffect(() => {
@@ -70,7 +69,7 @@ export function App() {
     checkSession();
   }, []);
 
-  // Cargar datos: desde la nube (Supabase) si hay sesion y esta configurada, o desde localStorage
+  // Cargar datos: desde el backend si hay sesion, o desde localStorage como respaldo offline
   useEffect(() => {
     if (!currentUser) return;
 
@@ -78,12 +77,7 @@ export function App() {
 
     const init = async () => {
       setAuditLogs(loadAuditLogs());
-
-      if (!isCloudEnabled) {
-        setProducts(loadProducts());
-        setBatches(loadBatches());
-        return;
-      }
+      setCloudStatus('connecting');
 
       try {
         const { products: cloudProducts, batches: cloudBatches } = await fetchAll();
@@ -102,11 +96,11 @@ export function App() {
             saveProducts(fresh.products);
             saveBatches(fresh.batches);
           } catch (e) {
-            console.error('Error al recargar desde la nube:', e);
+            console.error('Error al recargar desde el servidor:', e);
           }
         });
       } catch (e) {
-        console.error('No se pudo conectar a Supabase; se usan datos locales:', e);
+        console.error('No se pudo conectar al servidor; se usan datos locales:', e);
         setProducts(loadProducts());
         setBatches(loadBatches());
         setCloudStatus('error');
@@ -117,13 +111,12 @@ export function App() {
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Propaga una escritura a la nube (sin bloquear la UI). Marca error si falla.
+  // Propaga una escritura al servidor (sin bloquear la UI). Marca error si falla.
   const pushToCloud = (fn) => {
-    if (!isCloudEnabled) return;
     Promise.resolve()
       .then(fn)
       .catch((e) => {
-        console.error('Error al sincronizar con la nube:', e);
+        console.error('Error al sincronizar con el servidor:', e);
         setCloudStatus('error');
       });
   };

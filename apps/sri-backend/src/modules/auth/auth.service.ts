@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { SupabaseService } from '../database/supabase.service';
+import { DatabaseService } from '../database/database.service';
 import { UsuarioAutenticado, JwtPayload } from './auth.dto';
 
 // Hash bcrypt precalculado con coste 10 para igualar tiempos y mitigar ataques de temporizacion
@@ -12,27 +12,36 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    private readonly supabaseService: SupabaseService,
+    private readonly databaseService: DatabaseService,
     private readonly jwtService: JwtService,
   ) {}
 
   public async validarCredenciales(email: string, password: string): Promise<UsuarioAutenticado> {
     const normalizado = email.toLowerCase().trim();
-    const supabase = this.supabaseService.getClient();
 
-    if (!supabase) {
+    if (!this.databaseService.isAvailable()) {
       this.logger.warn('Base de datos no conectada para validacion de credenciales');
       await bcrypt.compare(password, DUMMY_HASH);
       throw new UnauthorizedException('Credenciales invalidas');
     }
 
-    const { data: usuario, error } = await supabase
-      .from('usuarios')
-      .select('id, empresa_id, email, password_hash, nombre, rol, activo, empresas (id, nombre, ruc, activo)')
-      .eq('email', normalizado)
-      .maybeSingle();
+    let usuario: any = null;
+    try {
+      const sql = `
+        SELECT u.id, u.empresa_id, u.email, u.password_hash, u.nombre, u.rol, u.activo,
+          row_to_json(e.*) AS empresas
+        FROM public.usuarios u
+        LEFT JOIN public.empresas e ON e.id = u.empresa_id
+        WHERE lower(u.email) = lower($1)
+        LIMIT 1
+      `;
+      const rows = await this.databaseService.query(sql, [normalizado]);
+      usuario = rows[0];
+    } catch {
+      usuario = null;
+    }
 
-    if (error || !usuario || !usuario.activo) {
+    if (!usuario || !usuario.activo) {
       await bcrypt.compare(password, DUMMY_HASH);
       throw new UnauthorizedException('Credenciales invalidas');
     }
@@ -42,7 +51,7 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales invalidas');
     }
 
-    const empresa = Array.isArray(usuario.empresas) ? usuario.empresas[0] : usuario.empresas;
+    const empresa = usuario.empresas;
     if (empresa && empresa.activo === false) {
       throw new UnauthorizedException('Credenciales invalidas');
     }
@@ -73,22 +82,31 @@ export class AuthService {
   }
 
   public async obtenerUsuarioActual(id: string): Promise<UsuarioAutenticado> {
-    const supabase = this.supabaseService.getClient();
-    if (!supabase) {
+    if (!this.databaseService.isAvailable()) {
       throw new UnauthorizedException('Servicio de base de datos no disponible');
     }
 
-    const { data: usuario, error } = await supabase
-      .from('usuarios')
-      .select('id, empresa_id, email, nombre, rol, activo, empresas (id, nombre, ruc, activo)')
-      .eq('id', id)
-      .maybeSingle();
+    let usuario: any = null;
+    try {
+      const sql = `
+        SELECT u.id, u.empresa_id, u.email, u.nombre, u.rol, u.activo,
+          row_to_json(e.*) AS empresas
+        FROM public.usuarios u
+        LEFT JOIN public.empresas e ON e.id = u.empresa_id
+        WHERE u.id = $1
+        LIMIT 1
+      `;
+      const rows = await this.databaseService.query(sql, [id]);
+      usuario = rows[0];
+    } catch (error: any) {
+      throw new UnauthorizedException(`Error de consulta: ${error.message}`);
+    }
 
-    if (error || !usuario || !usuario.activo) {
+    if (!usuario || !usuario.activo) {
       throw new UnauthorizedException('Usuario no encontrado o inactivo');
     }
 
-    const empresa = Array.isArray(usuario.empresas) ? usuario.empresas[0] : usuario.empresas;
+    const empresa = usuario.empresas;
     if (empresa && empresa.activo === false) {
       throw new UnauthorizedException('Empresa inactiva o suspendida');
     }
@@ -105,12 +123,11 @@ export class AuthService {
 
   private async actualizarUltimoAcceso(usuarioId: string): Promise<void> {
     try {
-      const supabase = this.supabaseService.getClient();
-      if (!supabase) return;
-      await supabase
-        .from('usuarios')
-        .update({ ultimo_acceso: new Date().toISOString() })
-        .eq('id', usuarioId);
+      if (!this.databaseService.isAvailable()) return;
+      await this.databaseService.query(
+        'UPDATE public.usuarios SET ultimo_acceso = now() WHERE id = $1',
+        [usuarioId],
+      );
     } catch {
       this.logger.warn(`No se pudo actualizar ultimo acceso para usuario ${usuarioId}`);
     }
