@@ -68,8 +68,9 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   const port = process.env.PORT || 3001;
-  await app.listen(port);
-  logger.log(`Servidor de Facturacion SRI corriendo en http://localhost:${port}/api`);
+  // Escuchar en 0.0.0.0 para que el proxy (Traefik) alcance el contenedor por IPv4
+  await app.listen(port, '0.0.0.0');
+  logger.log(`Servidor de Facturacion SRI corriendo en el puerto ${port} (ruta /api)`);
 }
 
 bootstrap();
